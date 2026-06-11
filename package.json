@@ -1,0 +1,63 @@
+{
+  "name": "@wireboundlabs/cli",
+  "version": "0.1.0",
+  "description": "Wirebound customer operations CLI",
+  "type": "module",
+  "license": "MIT",
+  "author": "Wirebound Labs",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/wireboundlabs/wirebound-cli.git"
+  },
+  "homepage": "https://github.com/wireboundlabs/wirebound-cli#readme",
+  "bugs": "https://github.com/wireboundlabs/wirebound-cli/issues",
+  "engines": {
+    "node": ">=20"
+  },
+  "bin": {
+    "wirebound": "./bin/run.js"
+  },
+  "files": [
+    "bin",
+    "dist",
+    "docs",
+    "README.md",
+    ".env.example",
+    "oclif.manifest.json"
+  ],
+  "scripts": {
+    "prebuild": "rm -rf dist",
+    "build": "tsc -b",
+    "dev": "./bin/dev.js",
+    "lint": "eslint",
+    "prepack": "npm run build && oclif manifest",
+    "test": "mocha --forbid-only \"test/**/*.test.ts\"",
+    "version": "oclif readme && git add README.md"
+  },
+  "dependencies": {
+    "@oclif/core": "^4",
+    "bottleneck": "^2.19.5",
+    "dotenv": "^16.4.7"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.4",
+    "@oclif/test": "^4",
+    "@types/chai": "^4",
+    "@types/mocha": "^10",
+    "@types/node": "^22",
+    "chai": "^4",
+    "eslint": "^9",
+    "mocha": "^11",
+    "nock": "^14",
+    "oclif": "^4",
+    "ts-node": "^10.9.2",
+    "typescript": "^5",
+    "typescript-eslint": "^8"
+  },
+  "oclif": {
+    "bin": "wirebound",
+    "commands": "./dist/commands",
+    "dirname": "wirebound",
+    "topicSeparator": " "
+  }
+}
