@@ -39,12 +39,8 @@ export abstract class Auth0Command extends WireboundCommand {
       clientId: flags['client-id'],
       clientSecret: flags['client-secret'],
       domain: flags.domain,
-      onDeprecationWarning: flags.verbose
-        ? (message) => this.logVerbose(message, true)
-        : undefined,
       profileVars: this.profileVars,
       rps: flags.rps,
-      verbose: flags.verbose,
     })
   }
 }

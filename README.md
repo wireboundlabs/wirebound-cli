@@ -159,8 +159,6 @@ Vendor docs:
 | `AUTH0_MGMT_CLIENT_SECRET` | M2M Client Secret |
 | `WIREBOUND_PROFILE` | Default profile name (optional) |
 
-Deprecated aliases: `MGMT_CLIENT_ID`, `MGMT_CLIENT_SECRET`.
-
 ---
 
 ## Common flags

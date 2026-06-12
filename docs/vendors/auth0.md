@@ -239,7 +239,6 @@ The CLI defaults to `--rps 2` and queues every API call (token, list, delete). O
 `GET /api/v2/users` search returns at most **1000** users per query. If you have more google-oauth2 matches:
 
 - Use `--limit` to cap how many you process per run
-- Plan for export-based workflows (future command) for very large tenants
 
 ---
 
@@ -253,7 +252,6 @@ The CLI defaults to `--rps 2` and queues every API call (token, list, delete). O
 | HTTP **403** | M2M app missing `read:users` or `delete:users` on Management API |
 | HTTP **429** | Rate limited — CLI retries; reduce `--rps` or wait |
 | `0 google-only user(s)` | No matching users, or all Google users are linked to another identity |
-| Deprecation warning with `--verbose` | Rename `MGMT_CLIENT_ID` → `AUTH0_MGMT_CLIENT_ID` in profile |
 
 ---
 

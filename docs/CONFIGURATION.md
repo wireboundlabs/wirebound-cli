@@ -36,7 +36,7 @@ If step 4 prints users instead of an error, you are configured correctly.
 | **Shell environment** | Single tenant, CI, one-off scripts | `export AUTH0_DOMAIN=...` etc. |
 | **CLI flags** | Debugging only | `--domain`, `--client-id`, `--client-secret` (avoid — secrets end up in shell history) |
 
-Profiles are plain `.env` files. One profile can hold credentials for **multiple vendors** (Auth0 today; Okta, Azure, Transmit later) in the same file.
+Profiles are plain `.env` files—typically one per customer or tenant.
 
 ```
 ~/.config/wirebound/
@@ -66,10 +66,6 @@ Example `~/.config/wirebound/profiles/acme.env`:
 AUTH0_DOMAIN=acme.us.auth0.com
 AUTH0_MGMT_CLIENT_ID=abcdefghijklmnopqrstuvwxyz1234
 AUTH0_MGMT_CLIENT_SECRET=your-secret-here-use-the-auth0-dashboard-value
-
-# Future vendors can live in the same file:
-# OKTA_DOMAIN=acme.okta.com
-# OKTA_API_TOKEN=...
 ```
 
 ### Using a profile
@@ -118,13 +114,6 @@ Oclif also reads these when resolving `--domain`, `--client-id`, and `--client-s
 | `AUTH0_MGMT_CLIENT_ID` | Yes | Machine-to-Machine application Client ID |
 | `AUTH0_MGMT_CLIENT_SECRET` | Yes | M2M Client Secret (shown once when created — save it) |
 | `WIREBOUND_PROFILE` | No | Default profile name (same as `--profile`) |
-
-**Deprecated aliases** (still work; use namespaced vars for new setups):
-
-| Old name | Use instead |
-|----------|-------------|
-| `MGMT_CLIENT_ID` | `AUTH0_MGMT_CLIENT_ID` |
-| `MGMT_CLIENT_SECRET` | `AUTH0_MGMT_CLIENT_SECRET` |
 
 ---
 
@@ -237,7 +226,7 @@ Always **dry-run in CI first**; add `--confirm` only when the pipeline is truste
 | `HTTP 403` | Missing API scopes | Add `read:users` + `delete:users` on M2M app |
 | `HTTP 429` | Rate limit | CLI retries automatically; lower volume or reduce `--rps` |
 | Command hangs then retries | Normal on 429 | Use `--verbose` to see wait messages |
-| Only 1000 users seen | Auth0 search cap | Documented limit; use `--limit` or future export command |
+| Only 1000 users seen | Auth0 search cap | Documented limit; use `--limit` to cap per run |
 
 ---
 
