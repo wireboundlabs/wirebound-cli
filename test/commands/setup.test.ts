@@ -8,16 +8,6 @@ import {expect} from 'chai'
 import {writeRepoDefaultProfile, writeRepoProfile} from '../../src/lib/config/profile.js'
 
 describe('setup', () => {
-  let originalCwd: string
-
-  beforeEach(() => {
-    originalCwd = process.cwd()
-  })
-
-  afterEach(() => {
-    process.chdir(originalCwd)
-  })
-
   it('lists repo-local profiles with --list', async () => {
     const tempRoot = mkdtempSync(join(tmpdir(), 'wirebound-setup-'))
     writeRepoProfile(tempRoot, 'dev', {
@@ -27,10 +17,8 @@ describe('setup', () => {
     })
     writeRepoDefaultProfile(tempRoot, 'dev')
 
-    process.chdir(tempRoot)
-
     try {
-      const {stdout} = await runCommand(['setup', '--list'])
+      const {stdout} = await runCommand(['setup', '--list', '--dir', tempRoot])
       expect(stdout).to.contain('dev')
       expect(stdout).to.contain('(default)')
     } finally {

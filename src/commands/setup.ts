@@ -31,7 +31,6 @@ export default class Setup extends Command {
       description: 'Set this profile as the repo default (written to .wirebound/default)',
     }),
     dir: Flags.string({
-      default: process.cwd(),
       description: 'Target repository directory (default: current working directory)',
     }),
     force: Flags.boolean({
@@ -49,7 +48,7 @@ export default class Setup extends Command {
 
   async run(): Promise<void> {
     const {flags} = await this.parse(Setup)
-    const targetDir = resolve(flags.dir)
+    const targetDir = resolve(flags.dir ?? process.cwd())
 
     if (flags.list) {
       this.log(listSetupProfiles(targetDir))
