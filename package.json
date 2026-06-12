@@ -7,7 +7,7 @@
   "author": "Wirebound Labs",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/wireboundlabs/wirebound-cli.git"
+    "url": "https://github.com/wireboundlabs/wirebound-cli.git"
   },
   "homepage": "https://github.com/wireboundlabs/wirebound-cli#readme",
   "bugs": "https://github.com/wireboundlabs/wirebound-cli/issues",
