@@ -2,10 +2,14 @@ import {type Auth0Config} from '../config/auth0.js'
 import {assertOk} from '../http-error.js'
 import {RateLimiter} from '../rate-limiter.js'
 import {isGoogleOnlyUser} from './filters.js'
+import {paginate} from './pagination.js'
 import {
+  type Auth0Log,
+  type Auth0LogsResponse,
   type Auth0TokenResponse,
   type Auth0User,
   type Auth0UsersSearchResponse,
+  type Auth0UserUpdate,
 } from './types.js'
 
 export interface ListGoogleOnlyUsersOptions {
@@ -13,30 +17,14 @@ export interface ListGoogleOnlyUsersOptions {
   onPage?: (info: {page: number; total: number; rawCount: number}) => void
 }
 
-function addEligibleUsers(
-  users: Auth0User[],
-  eligible: Auth0User[],
-  limit?: number,
-): boolean {
-  const remaining =
-    limit === undefined ? users.length : Math.max(0, limit - eligible.length)
-  const toAdd = users.filter(isGoogleOnlyUser).slice(0, remaining)
-  eligible.push(...toAdd)
-
-  return limit !== undefined && eligible.length >= limit
+export interface SearchUsersOptions {
+  limit?: number
+  onPage?: (info: {page: number; total: number; rawCount: number}) => void
 }
 
-function isLastUserPage(
-  data: Auth0UsersSearchResponse,
-  page: number,
-  perPage: number,
-): boolean {
-  if (data.users.length === 0) {
-    return true
-  }
-
-  const fetched = (page + 1) * perPage
-  return fetched >= data.total || fetched >= 1000
+export interface SearchLogsOptions {
+  limit?: number
+  onPage?: (info: {page: number; total: number; rawCount: number}) => void
 }
 
 export class Auth0Client {
@@ -100,29 +88,134 @@ export class Auth0Client {
     return this.token
   }
 
+  async searchUsers(
+    query: string,
+    options: SearchUsersOptions = {},
+  ): Promise<{users: Auth0User[]; total: number; truncated: boolean}> {
+    const result = await paginate<Auth0User>({
+      fetchPage: async (page, perPage) => {
+        const data = await this.fetchUserSearchPage(query, page, perPage)
+        return {items: data.users, page, perPage, total: data.total}
+      },
+      limit: options.limit,
+      onPage: options.onPage,
+    })
+
+    return {total: result.total, truncated: result.truncated, users: result.items}
+  }
+
   async listGoogleOnlyUsers(
     options: ListGoogleOnlyUsersOptions = {},
-  ): Promise<{users: Auth0User[]; totalRaw: number}> {
+  ): Promise<{users: Auth0User[]; totalRaw: number; truncated: boolean}> {
     const eligible: Auth0User[] = []
     let totalRaw = 0
     let page = 0
-    let done = false
+    let truncated = false
     const perPage = 100
 
     do {
-      const data = await this.fetchUserSearchPage(page, perPage)
+      const data = await this.fetchUserSearchPage(
+        'identities.provider:"google-oauth2"',
+        page,
+        perPage,
+      )
       totalRaw += data.users.length
       options.onPage?.({page, rawCount: data.users.length, total: data.total})
-      done =
-        addEligibleUsers(data.users, eligible, options.limit) ||
-        isLastUserPage(data, page, perPage)
-      page += 1
-    } while (!done)
 
-    return {totalRaw, users: eligible}
+      for (const user of data.users) {
+        if (!isGoogleOnlyUser(user)) continue
+        if (options.limit !== undefined && eligible.length >= options.limit) break
+        eligible.push(user)
+      }
+
+      const hitLimit = options.limit !== undefined && eligible.length >= options.limit
+      const lastPage =
+        data.users.length === 0 ||
+        (page + 1) * perPage >= data.total ||
+        (page + 1) * perPage >= 1000
+
+      if (lastPage) {
+        truncated = data.total > 1000
+      }
+
+      if (hitLimit || lastPage) break
+      page += 1
+    } while (page < Number.MAX_SAFE_INTEGER)
+
+    return {totalRaw, truncated, users: eligible}
+  }
+
+  async getUserById(userId: string): Promise<Auth0User> {
+    const encodedId = encodeURIComponent(userId)
+    const response = await this.fetch(
+      `/api/v2/users/${encodedId}`,
+      await this.withAuth({method: 'GET'}),
+    )
+
+    return (await response.json()) as Auth0User
+  }
+
+  async getUsersByEmail(email: string): Promise<Auth0User[]> {
+    const params = new URLSearchParams({email})
+    const response = await this.fetch(
+      `/api/v2/users-by-email?${params.toString()}`,
+      await this.withAuth({method: 'GET'}),
+    )
+
+    return (await response.json()) as Auth0User[]
+  }
+
+  async updateUser(userId: string, patch: Auth0UserUpdate): Promise<Auth0User> {
+    const encodedId = encodeURIComponent(userId)
+    const response = await this.fetch(
+      `/api/v2/users/${encodedId}`,
+      await this.withAuth({body: JSON.stringify(patch), method: 'PATCH'}),
+    )
+
+    return (await response.json()) as Auth0User
+  }
+
+  async searchLogs(
+    query: string,
+    options: SearchLogsOptions = {},
+  ): Promise<{logs: Auth0Log[]; truncated: boolean}> {
+    const logs: Auth0Log[] = []
+    let page = 0
+    const perPage = 50
+    let truncated = false
+
+    while (true) {
+      const batch = await this.fetchLogsPage(query, page, perPage)
+      options.onPage?.({page, rawCount: batch.length, total: batch.length})
+
+      const remaining =
+        options.limit === undefined
+          ? batch.length
+          : Math.max(0, options.limit - logs.length)
+      logs.push(...batch.slice(0, remaining))
+
+      if (options.limit !== undefined && logs.length >= options.limit) {
+        truncated = batch.length === perPage
+        break
+      }
+
+      if (batch.length < perPage) break
+      page += 1
+    }
+
+    return {logs, truncated}
+  }
+
+  async deleteUser(userId: string): Promise<void> {
+    const encodedId = encodeURIComponent(userId)
+    await this.fetch(
+      `/api/v2/users/${encodedId}`,
+      await this.withAuth({method: 'DELETE'}),
+    )
   }
 
   private async fetchUserSearchPage(
+    query: string,
     page: number,
     perPage: number,
   ): Promise<Auth0UsersSearchResponse> {
@@ -130,7 +223,7 @@ export class Auth0Client {
       include_totals: 'true',
       page: String(page),
       per_page: String(perPage),
-      q: 'identities.provider:"google-oauth2"',
+      q: query,
       search_engine: 'v3',
     })
 
@@ -142,11 +235,26 @@ export class Auth0Client {
     return (await response.json()) as Auth0UsersSearchResponse
   }
 
-  async deleteUser(userId: string): Promise<void> {
-    const encodedId = encodeURIComponent(userId)
-    await this.fetch(
-      `/api/v2/users/${encodedId}`,
-      await this.withAuth({method: 'DELETE'}),
+  private async fetchLogsPage(
+    query: string,
+    page: number,
+    perPage: number,
+  ): Promise<Auth0LogsResponse> {
+    const params = new URLSearchParams({
+      page: String(page),
+      per_page: String(perPage),
+      sort: 'date:-1',
+    })
+
+    if (query) {
+      params.set('q', query)
+    }
+
+    const response = await this.fetch(
+      `/api/v2/logs?${params.toString()}`,
+      await this.withAuth({method: 'GET'}),
     )
+
+    return (await response.json()) as Auth0LogsResponse
   }
 }

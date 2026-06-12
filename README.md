@@ -3,13 +3,14 @@
 [![npm version](https://img.shields.io/npm/v/@wireboundlabs/cli.svg)](https://www.npmjs.com/package/@wireboundlabs/cli)
 [![npm downloads](https://img.shields.io/npm/dm/@wireboundlabs/cli.svg)](https://www.npmjs.com/package/@wireboundlabs/cli)
 [![CI](https://github.com/wireboundlabs/wirebound-cli/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/wireboundlabs/wirebound-cli/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/wireboundlabs/wirebound-cli/graph/badge.svg)](https://codecov.io/gh/wireboundlabs/wirebound-cli)
 [![GitHub release](https://img.shields.io/github/v/release/wireboundlabs/wirebound-cli?include_prereleases)](https://github.com/wireboundlabs/wirebound-cli/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Node.js](https://img.shields.io/badge/node-%3E%3D20-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
+[![Node.js](https://img.shields.io/badge/node-%3E%3D24-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![GitHub stars](https://img.shields.io/github/stars/wireboundlabs/wirebound-cli?style=social)](https://github.com/wireboundlabs/wirebound-cli/stargazers)
 
-**Auth0 operations from your terminal.** Point `wirebound` at a tenant, run maintenance tasks with dry-run defaults, and ship scripts with JSON output — no dashboard clicking required.
+**Identity provider operations from your terminal.** Point `wirebound` at a tenant, run maintenance tasks with dry-run defaults, and ship scripts with JSON output — no dashboard clicking required.
 
 Install once globally. Configure per repo with `wirebound setup`. Switch between dev, staging, and production with `--profile`.
 
@@ -22,7 +23,7 @@ Install once globally. Configure per repo with `wirebound setup`. Switch between
 - **Safe by default** — destructive commands dry-run until you pass `--confirm`
 - **Repo-native config** — credentials live in `.wirebound/profiles/` (gitignored), one profile per environment
 - **Automation-ready** — `--json`, rate-limit handling, and predictable exit codes for CI
-- **Multi-tenant friendly** — run the same commands across projects; each repo keeps its own Auth0 config
+- **Multi-tenant friendly** — run the same commands across projects; each repo keeps its own tenant credentials
 
 ---
 
@@ -33,7 +34,7 @@ npm install -g @wireboundlabs/cli
 wirebound --help
 ```
 
-Requires **Node.js 20+**.
+Requires **Node.js 24+** (current LTS).
 
 ---
 
@@ -148,14 +149,19 @@ export AUTH0_MGMT_CLIENT_SECRET=your-client-secret
 
 | Command | Description |
 |---------|-------------|
-| `wirebound setup` | Interactive Auth0 credential setup — repo-local profiles under `.wirebound/profiles/` |
+| `wirebound setup` | Connect a tenant — interactive credential setup (Auth0) |
+| `wirebound auth0 users search` | Search users with a Lucene v3 query |
+| `wirebound auth0 users get` | Get a user by email or user ID |
+| `wirebound auth0 users block` | Block users by email, ID, or query (dry-run by default) |
+| `wirebound auth0 users unblock` | Unblock users by email, ID, or query (dry-run by default) |
+| `wirebound auth0 logs search` | Search tenant logs with Lucene query syntax |
 | `wirebound auth0 delete-google-users` | Remove users with exactly one Google identity (dry-run by default) |
 
 More detail: [Auth0 vendor guide](docs/vendors/auth0.md)
 
 ---
 
-## Auth0 credentials
+## Credentials (Auth0)
 
 | Variable | Description |
 |----------|-------------|
@@ -201,6 +207,7 @@ cd wirebound-cli
 npm install
 npm run build
 npm test
+npm run test:coverage
 ./bin/dev.js setup --help
 ./bin/dev.js auth0 delete-google-users --help
 ```

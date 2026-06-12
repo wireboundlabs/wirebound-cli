@@ -20,8 +20,10 @@ Required Management API scopes for current commands:
 
 | Scope | Used by |
 |-------|---------|
-| `read:users` | Listing users |
+| `read:users` | `users search`, `users get`, block/unblock dry-run, `delete-google-users` |
+| `update:users` | `users block --confirm`, `users unblock --confirm` |
 | `delete:users` | `delete-google-users --confirm` |
+| `read:logs` | `logs search` |
 
 ---
 
@@ -49,10 +51,12 @@ On the next screen (or **APIs** tab of the new app):
 1. Select **Auth0 Management API**
 2. Enable scopes:
    - **`read:users`**
+   - **`update:users`**
    - **`delete:users`**
+   - **`read:logs`**
 3. **Authorize** / save
 
-Grant only what you need. For dry-runs you still need `read:users`; deletes require `delete:users`.
+Grant only what you need. For dry-runs you still need `read:users`; block/unblock require `update:users`; deletes require `delete:users`; log search requires `read:logs`.
 
 ### 4. Save credentials with Wirebound setup
 
@@ -151,6 +155,80 @@ Avoid for production use (shell history).
 ---
 
 ## Commands
+
+### `wirebound auth0 users search`
+
+Search Auth0 users with Lucene v3 query syntax.
+
+```bash
+wirebound auth0 users search --query 'email:*@acme.com'
+wirebound auth0 users search --query 'identities.provider:"google-oauth2"' --limit 50 --json
+```
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--query` / `-q` | required | Lucene v3 search query |
+| `--limit` | unlimited | Max users to return |
+| `--fields` | `email,user_id,created_at,blocked,last_login` | Comma-separated projection |
+
+---
+
+### `wirebound auth0 users get`
+
+Look up a user by email or user ID.
+
+```bash
+wirebound auth0 users get --email user@example.com
+wirebound auth0 users get --id auth0|abc123 --json
+```
+
+| Flag | Description |
+|------|-------------|
+| `--email` | Lookup via users-by-email (shows all matches if duplicates) |
+| `--id` | Direct user_id lookup |
+
+---
+
+### `wirebound auth0 users block` / `wirebound auth0 users unblock`
+
+Block or unblock users by email, user ID, or search query. Dry-run by default.
+
+```bash
+wirebound auth0 users block --email user@example.com
+wirebound auth0 users block --query 'email:*@acme.com' --confirm
+wirebound auth0 users unblock --query 'blocked:true' --confirm
+```
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--email` | — | User email address |
+| `--id` | — | Auth0 user ID |
+| `--query` / `-q` | — | Lucene v3 search query |
+| `--limit` | unlimited | Max users when using `--query` |
+| `--confirm` | false | Apply the change (default is dry-run) |
+
+Exactly one of `--email`, `--id`, or `--query` is required.
+
+---
+
+### `wirebound auth0 logs search`
+
+Search tenant logs with Lucene query syntax.
+
+```bash
+wirebound auth0 logs search --query 'type:failed_login'
+wirebound auth0 logs search --query 'type:seccft' --limit 20 --json
+wirebound auth0 logs search --from 2026-06-01 --to 2026-06-12 --query 'type:f'
+```
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--query` / `-q` | optional | Lucene query |
+| `--from` | — | Start date (ISO 8601) |
+| `--to` | — | End date (ISO 8601) |
+| `--limit` | `50` | Max log entries |
+
+---
 
 ### `wirebound auth0 delete-google-users`
 

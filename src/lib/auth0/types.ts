@@ -8,8 +8,14 @@ export interface Auth0Identity {
 export interface Auth0User {
   user_id: string
   email?: string
+  name?: string
   created_at?: string
+  last_login?: string
+  logins_count?: number
+  blocked?: boolean
   identities?: Auth0Identity[]
+  app_metadata?: Record<string, unknown>
+  user_metadata?: Record<string, unknown>
 }
 
 export interface Auth0UsersSearchResponse {
@@ -20,8 +26,25 @@ export interface Auth0UsersSearchResponse {
   users: Auth0User[]
 }
 
+export interface Auth0Log {
+  log_id: string
+  date: string
+  type: string
+  description?: string
+  user_id?: string
+  user_name?: string
+  ip?: string
+  client_name?: string
+}
+
+export type Auth0LogsResponse = Auth0Log[]
+
 export interface Auth0TokenResponse {
   access_token: string
   token_type: string
   expires_in: number
+}
+
+export interface Auth0UserUpdate {
+  blocked?: boolean
 }

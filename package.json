@@ -1,7 +1,7 @@
 {
   "name": "@wireboundlabs/cli",
-  "version": "0.1.2",
-  "description": "Auth0 operations CLI — tenant maintenance from the terminal with dry-run defaults and repo-local profiles",
+  "version": "0.2.0",
+  "description": "Identity provider operations from the terminal — tenant maintenance with dry-run defaults and repo-local profiles",
   "type": "module",
   "license": "MIT",
   "author": "Wirebound Labs",
@@ -12,7 +12,7 @@
   "homepage": "https://github.com/wireboundlabs/wirebound-cli#readme",
   "bugs": "https://github.com/wireboundlabs/wirebound-cli/issues",
   "engines": {
-    "node": ">=20"
+    "node": ">=24"
   },
   "bin": {
     "wirebound": "./bin/run.js"
@@ -32,6 +32,7 @@
     "lint": "eslint",
     "prepack": "npm run build && oclif manifest",
     "test": "mocha --forbid-only \"test/**/*.test.ts\"",
+    "test:coverage": "c8 npm test",
     "fallow": "fallow",
     "version": "oclif readme && git add README.md"
   },
@@ -48,6 +49,7 @@
     "@types/mocha": "^10",
     "@types/node": "^22",
     "chai": "^4",
+    "c8": "^11.0.0",
     "eslint": "^9",
     "fallow": "^2.94.0",
     "mocha": "^11",

@@ -2,7 +2,7 @@ import {Flags} from '@oclif/core'
 
 import {Auth0Client} from '../../lib/auth0/client.js'
 import {type Auth0User} from '../../lib/auth0/types.js'
-import {formatHumanResult, type CommandResult} from '../../lib/output.js'
+import {formatHumanResult, type DeleteCommandResult} from '../../lib/output.js'
 import {RateLimiter} from '../../lib/rate-limiter.js'
 import {Auth0Command} from '../../lib/commands/auth0-command.js'
 
@@ -10,9 +10,9 @@ async function deleteEligibleUsers(
   client: Auth0Client,
   users: Auth0User[],
   logVerbose: (message: string) => void,
-): Promise<{deleted: string[]; errors: CommandResult['errors']}> {
+): Promise<{deleted: string[]; errors: DeleteCommandResult['errors']}> {
   const deleted: string[] = []
-  const errors: CommandResult['errors'] = []
+  const errors: DeleteCommandResult['errors'] = []
 
   for (const user of users) {
     try {
@@ -75,7 +75,7 @@ export default class Auth0DeleteGoogleUsers extends Auth0Command {
       },
     })
 
-    const result: CommandResult = {
+    const result: DeleteCommandResult = {
       candidates: users.map((user) => ({
         created_at: user.created_at,
         email: user.email,
@@ -103,7 +103,7 @@ export default class Auth0DeleteGoogleUsers extends Auth0Command {
     }
   }
 
-  private emitResult(result: CommandResult, asJson: boolean): void {
+  private emitResult(result: DeleteCommandResult, asJson: boolean): void {
     if (asJson) {
       this.log(JSON.stringify(result, null, 2))
       return

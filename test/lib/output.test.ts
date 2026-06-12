@@ -1,0 +1,134 @@
+import {expect} from 'chai'
+
+import {
+  buildLogQuery,
+  formatHumanResult,
+  formatLogSearchResult,
+  formatUserGetResult,
+  formatUserMutationResult,
+  formatUserSearchResult,
+  parseUserFields,
+  toCandidateUser,
+} from '../../src/lib/output.js'
+
+describe('output formatters', () => {
+  it('formatUserGetResult handles empty results', () => {
+    expect(formatUserGetResult([])).to.equal('No user found')
+  })
+
+  it('formatUserGetResult renders user details and identities', () => {
+    const output = formatUserGetResult([
+      {
+        blocked: true,
+        created_at: '2024-01-01T00:00:00.000Z',
+        email: 'user@example.com',
+        identities: [
+          {connection: 'Username-Password-Authentication', provider: 'auth0', user_id: '1'},
+        ],
+        last_login: '2024-06-01T00:00:00.000Z',
+        logins_count: 2,
+        name: 'Test User',
+        user_id: 'auth0|1',
+      },
+    ])
+
+    expect(output).to.contain('auth0|1')
+    expect(output).to.contain('Test User')
+    expect(output).to.contain('auth0 (Username-Password-Authentication)')
+  })
+
+  it('formatUserSearchResult notes truncation', () => {
+    const output = formatUserSearchResult(
+      {
+        total: 2000,
+        truncated: true,
+        users: [{email: 'a@example.com', user_id: 'auth0|1'}],
+      },
+      'email:a@example.com',
+    )
+
+    expect(output).to.contain('truncated')
+    expect(output).to.contain('a@example.com')
+  })
+
+  it('formatUserMutationResult renders block and unblock summaries', () => {
+    const dryRun = formatUserMutationResult(
+      {
+        candidates: [{email: 'a@example.com', user_id: 'auth0|1'}],
+        dryRun: true,
+        errors: [],
+        updated: [],
+      },
+      'block',
+    )
+    const confirmed = formatUserMutationResult(
+      {
+        candidates: [{email: 'a@example.com', user_id: 'auth0|1'}],
+        dryRun: false,
+        errors: [{message: 'failed', user_id: 'auth0|1'}],
+        updated: [],
+      },
+      'unblock',
+    )
+
+    expect(dryRun).to.contain('Would block')
+    expect(confirmed).to.contain('Unblocked 0 user(s)')
+    expect(confirmed).to.contain('auth0|1: failed')
+  })
+
+  it('formatLogSearchResult handles empty query', () => {
+    const output = formatLogSearchResult({logs: [], total: 0, truncated: false}, '')
+
+    expect(output).to.contain('Query: (none)')
+  })
+
+  it('formatHumanResult renders delete dry-run output', () => {
+    const output = formatHumanResult({
+      candidates: [
+        {
+          created_at: '2024-01-01T00:00:00.000Z',
+          email: 'solo@gmail.com',
+          user_id: 'google-oauth2|123',
+        },
+      ],
+      deleted: [],
+      dryRun: true,
+      eligible: 1,
+      errors: [],
+      found: 1,
+    })
+
+    expect(output).to.contain('dry run')
+    expect(output).to.contain('solo@gmail.com')
+  })
+
+  it('buildLogQuery combines query and date filters', () => {
+    expect(buildLogQuery({from: '2026-06-01', query: 'type:f', to: '2026-06-12'})).to.equal(
+      '(type:f) AND date:[2026-06-01 TO 2026-06-12]',
+    )
+    expect(buildLogQuery({from: '2026-06-01'})).to.equal('date:[2026-06-01 TO *]')
+    expect(buildLogQuery({to: '2026-06-12'})).to.equal('date:[* TO 2026-06-12]')
+  })
+
+  it('parseUserFields splits custom columns', () => {
+    expect(parseUserFields('email,user_id')).to.deep.equal(['email', 'user_id'])
+  })
+
+  it('toCandidateUser projects user fields', () => {
+    expect(
+      toCandidateUser({
+        blocked: false,
+        created_at: '2024-01-01T00:00:00.000Z',
+        email: 'a@example.com',
+        last_login: '2024-06-01T00:00:00.000Z',
+        user_id: 'auth0|1',
+      }),
+    ).to.deep.equal({
+      blocked: false,
+      created_at: '2024-01-01T00:00:00.000Z',
+      email: 'a@example.com',
+      last_login: '2024-06-01T00:00:00.000Z',
+      user_id: 'auth0|1',
+    })
+  })
+})

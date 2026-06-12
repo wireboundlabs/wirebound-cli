@@ -1,6 +1,6 @@
 # Configuration
 
-Everything you need to run `wirebound` after `npm install -g @wireboundlabs/cli`. Credentials live in **repo-local config** (recommended) or on your machine — never committed to git.
+Everything you need to run `wirebound` after `npm install -g @wireboundlabs/cli`. Wirebound stores per-tenant credentials in **repo-local profiles** (recommended) or on your machine — never committed to git. Auth0 is the supported provider today.
 
 ## The 60-second version
 
@@ -30,7 +30,7 @@ Optional: verify credentials during setup with `wirebound setup --check`.
 
 | Location | Best for | Path / usage |
 |----------|----------|----------------|
-| **Repo-local profiles** (recommended) | Multiple Auth0 envs per repo | `.wirebound/profiles/<name>.env` + `--profile <name>` or `.wirebound/default` |
+| **Repo-local profiles** (recommended) | Multiple tenant envs per repo | `.wirebound/profiles/<name>.env` + `--profile <name>` or `.wirebound/default` |
 | **Global profile file** | Shared profiles outside repo context | `~/.config/wirebound/profiles/<name>.env` + `--profile <name>` or `$WIREBOUND_PROFILE` |
 | **Shell environment** | Single tenant, CI, one-off scripts | `export AUTH0_DOMAIN=...` etc. |
 | **CLI flags** | Debugging only | `--domain`, `--client-id`, `--client-secret` (avoid — secrets end up in shell history) |
@@ -191,7 +191,7 @@ Example: repo config sets `AUTH0_DOMAIN=prod.auth0.com`, but you pass `--domain 
 
 ## Auth0 setup (M2M credentials)
 
-You need a **Machine-to-Machine** application authorized for the **Auth0 Management API** with scopes `read:users` and `delete:users`.
+You need a **Machine-to-Machine** application authorized for the **Auth0 Management API** with scopes `read:users`, `update:users`, `delete:users`, and `read:logs` (grant only what your commands need).
 
 Full click-by-click instructions: [docs/vendors/auth0.md](vendors/auth0.md#set-up-machine-to-machine-credentials-in-auth0).
 
@@ -200,7 +200,7 @@ Short version:
 1. Auth0 Dashboard → **Applications** → **Create Application**
 2. Name it e.g. `Wirebound CLI`, type **Machine to Machine**
 3. Authorize it for **Auth0 Management API**
-4. Enable scopes: **`read:users`**, **`delete:users`**
+4. Enable scopes: **`read:users`**, **`update:users`**, **`delete:users`**, **`read:logs`** (as needed)
 5. Copy **Domain** (Settings → Domain), **Client ID**, and **Client Secret** into config via `wirebound setup`
 
 ---
@@ -269,7 +269,7 @@ Always **dry-run in CI first**; add `--confirm` only when the pipeline is truste
 - [ ] Config files are mode `600` (`wirebound setup` sets this automatically)
 - [ ] `.wirebound/` is in `.gitignore` (setup adds it when possible)
 - [ ] Global profiles are **not** in git (only `*.env.example` / templates in the repo)
-- [ ] M2M app has **only** the scopes you need (`read:users`, `delete:users` for the current command)
+- [ ] M2M app has **only** the scopes you need (`read:users`, `update:users`, `delete:users`, `read:logs`)
 - [ ] Use a **dedicated** M2M app per customer/tenant where possible
 - [ ] Prefer repo-local config or env vars over passing `--client-secret` on the command line
 - [ ] Default is **dry-run** — deletes require explicit `--confirm`

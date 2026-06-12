@@ -12,7 +12,7 @@ import {listSetupProfiles, runSetup} from '../lib/setup/run-setup.js'
 
 export default class Setup extends Command {
   static description =
-    'Interactive setup — create repo-local Auth0 profiles under .wirebound/profiles/'
+    'Connect an identity provider tenant — interactive credential setup (Auth0)'
 
   static examples = [
     '<%= config.bin %> setup',

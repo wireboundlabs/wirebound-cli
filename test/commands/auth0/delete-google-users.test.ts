@@ -197,4 +197,29 @@ describe('auth0 delete-google-users', () => {
     expect(result.errors).to.have.length(0)
     expect(nock.pendingMocks()).to.have.length(0)
   })
+
+  it('records delete errors and exits non-zero', async () => {
+    mockToken()
+    mockUserSearch([googleOnlyUser])
+
+    nock(BASE).delete('/api/v2/users/google-oauth2%7C123').reply(500, 'fail')
+
+    const {stdout, error} = await runCommand([
+      'auth0:delete-google-users',
+      '--domain',
+      DOMAIN,
+      '--client-id',
+      'cid',
+      '--client-secret',
+      'secret',
+      '--confirm',
+      '--json',
+    ])
+
+    const result = JSON.parse(stdout) as {deleted: string[]; errors: Array<{user_id: string}>}
+    expect(result.deleted).to.have.length(0)
+    expect(result.errors).to.have.length(1)
+    expect(result.errors[0].user_id).to.equal('google-oauth2|123')
+    expect(error).to.not.equal(undefined)
+  })
 })
