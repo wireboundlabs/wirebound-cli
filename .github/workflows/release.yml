@@ -14,11 +14,11 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       # Do not set registry-url — it breaks OIDC when no NPM_TOKEN is present.
       # Node 24 bundles npm 11.5.1+, required for trusted publishing.
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: 24
           cache: npm
@@ -30,6 +30,6 @@ jobs:
 
       - run: npm publish --access public
 
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v3
         with:
           generate_release_notes: true
