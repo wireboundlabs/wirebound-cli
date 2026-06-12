@@ -1,6 +1,12 @@
+import {mkdtempSync, rmSync} from 'node:fs'
+import {tmpdir} from 'node:os'
+import {join} from 'node:path'
+
 import {runCommand} from '@oclif/test'
 import {expect} from 'chai'
 import nock from 'nock'
+
+import {writeRepoDefaultProfile, writeRepoProfile} from '../../../src/lib/config/profile.js'
 
 const DOMAIN = 'tenant.example.com'
 const BASE = `https://${DOMAIN}`
@@ -48,8 +54,33 @@ function mockUserSearch(users: unknown[]): void {
     })
 }
 
+async function runWithRepoProfile(
+  tempRoot: string,
+  args: string[],
+  setup: () => void,
+): Promise<{eligible: number}> {
+  setup()
+  process.chdir(tempRoot)
+  mockToken()
+  mockUserSearch([googleOnlyUser])
+
+  try {
+    const {stdout} = await runCommand(args)
+    return JSON.parse(stdout) as {eligible: number}
+  } finally {
+    rmSync(tempRoot, {force: true, recursive: true})
+  }
+}
+
 describe('auth0 delete-google-users', () => {
+  let originalCwd: string
+
+  beforeEach(() => {
+    originalCwd = process.cwd()
+  })
+
   afterEach(() => {
+    process.chdir(originalCwd)
     nock.cleanAll()
   })
 
@@ -102,6 +133,43 @@ describe('auth0 delete-google-users', () => {
     expect(result.candidates).to.have.length(1)
     expect(result.candidates[0].user_id).to.equal('google-oauth2|123')
     expect(result.deleted).to.have.length(0)
+  })
+
+  it('loads credentials from default repo profile', async () => {
+    const tempRoot = mkdtempSync(join(tmpdir(), 'wirebound-auth0-'))
+    const result = await runWithRepoProfile(
+      tempRoot,
+      ['auth0:delete-google-users', '--json'],
+      () => {
+        writeRepoProfile(tempRoot, 'dev', {
+          AUTH0_DOMAIN: DOMAIN,
+          AUTH0_MGMT_CLIENT_ID: 'cid',
+          AUTH0_MGMT_CLIENT_SECRET: 'secret',
+        })
+        writeRepoDefaultProfile(tempRoot, 'dev')
+      },
+    )
+
+    expect(result.eligible).to.equal(1)
+    expect(nock.pendingMocks()).to.have.length(0)
+  })
+
+  it('loads credentials from a named repo profile via --profile', async () => {
+    const tempRoot = mkdtempSync(join(tmpdir(), 'wirebound-auth0-'))
+    const result = await runWithRepoProfile(
+      tempRoot,
+      ['auth0:delete-google-users', '--profile', 'production', '--json'],
+      () => {
+        writeRepoProfile(tempRoot, 'production', {
+          AUTH0_DOMAIN: DOMAIN,
+          AUTH0_MGMT_CLIENT_ID: 'cid',
+          AUTH0_MGMT_CLIENT_SECRET: 'secret',
+        })
+      },
+    )
+
+    expect(result.eligible).to.equal(1)
+    expect(nock.pendingMocks()).to.have.length(0)
   })
 
   it('confirm deletes only eligible google-only users', async () => {

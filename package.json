@@ -32,9 +32,11 @@
     "lint": "eslint",
     "prepack": "npm run build && oclif manifest",
     "test": "mocha --forbid-only \"test/**/*.test.ts\"",
+    "fallow": "fallow",
     "version": "oclif readme && git add README.md"
   },
   "dependencies": {
+    "@inquirer/prompts": "^8.5.2",
     "@oclif/core": "^4",
     "bottleneck": "^2.19.5",
     "dotenv": "^16.4.7"
@@ -47,6 +49,7 @@
     "@types/node": "^22",
     "chai": "^4",
     "eslint": "^9",
+    "fallow": "^2.94.0",
     "mocha": "^11",
     "nock": "^14",
     "oclif": "^4",

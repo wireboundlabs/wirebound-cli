@@ -33,7 +33,7 @@ export abstract class Auth0Command extends WireboundCommand {
     profile?: string
     verbose?: boolean
   }): Promise<Auth0Config> {
-    await this.loadProfileIfNeeded(flags.profile)
+    await this.loadConfigVars(flags.profile)
 
     return resolveAuth0Config({
       clientId: flags['client-id'],

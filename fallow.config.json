@@ -1,5 +1,0 @@
-{
-  "entryPoints": [
-    "src/commands/auth0/delete-google-users.ts"
-  ]
-}

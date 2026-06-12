@@ -1,6 +1,6 @@
 # Configuration
 
-Everything you need to run `wirebound` after `npm install -g @wireboundlabs/cli`. No code in this repo, no `.env` committed — credentials live on your machine only.
+Everything you need to run `wirebound` after `npm install -g @wireboundlabs/cli`. Credentials live in **repo-local config** (recommended) or on your machine — never committed to git.
 
 ## The 60-second version
 
@@ -8,23 +8,21 @@ Everything you need to run `wirebound` after `npm install -g @wireboundlabs/cli`
 # 1. Install
 npm install -g @wireboundlabs/cli
 
-# 2. Create a profile (one per customer / tenant)
-mkdir -p ~/.config/wirebound/profiles
-cp docs/templates/profile.env.example ~/.config/wirebound/profiles/acme.env
-# Edit acme.env — paste domain, client ID, and client secret from Auth0
+# 2. Set up profiles (dev, test, production, etc.)
+cd ~/repos/my-app
+wirebound setup --profile dev --default
+wirebound setup --profile production
 
-# 3. Set your default profile (optional — skip --profile on every command)
-echo 'export WIREBOUND_PROFILE=acme' >> ~/.zshrc   # or ~/.bashrc
-source ~/.zshrc
-
-# 4. Dry-run (safe — lists candidates, deletes nothing)
+# 3. Dry-run (safe — lists candidates, deletes nothing)
 wirebound auth0 delete-google-users
 
-# 5. Delete after you review the list
+# 4. Delete after you review the list
 wirebound auth0 delete-google-users --confirm
 ```
 
-If step 4 prints users instead of an error, you are configured correctly.
+If step 3 prints users instead of an error, you are configured correctly.
+
+Optional: verify credentials during setup with `wirebound setup --check`.
 
 ---
 
@@ -32,31 +30,102 @@ If step 4 prints users instead of an error, you are configured correctly.
 
 | Location | Best for | Path / usage |
 |----------|----------|----------------|
-| **Profile file** (recommended) | Multiple customers, daily ops | `~/.config/wirebound/profiles/<name>.env` + `--profile <name>` or `$WIREBOUND_PROFILE` |
+| **Repo-local profiles** (recommended) | Multiple Auth0 envs per repo | `.wirebound/profiles/<name>.env` + `--profile <name>` or `.wirebound/default` |
+| **Global profile file** | Shared profiles outside repo context | `~/.config/wirebound/profiles/<name>.env` + `--profile <name>` or `$WIREBOUND_PROFILE` |
 | **Shell environment** | Single tenant, CI, one-off scripts | `export AUTH0_DOMAIN=...` etc. |
 | **CLI flags** | Debugging only | `--domain`, `--client-id`, `--client-secret` (avoid — secrets end up in shell history) |
 
-Profiles are plain `.env` files—typically one per customer or tenant.
+---
+
+## Repo-local profiles
+
+Run setup for each Auth0 environment in the repo:
+
+```bash
+cd ~/repos/my-app
+wirebound setup --profile dev --default
+wirebound setup --profile test
+wirebound setup --profile production
+```
+
+This creates:
 
 ```
-~/.config/wirebound/
-└── profiles/
-    ├── acme.env          # customer A
-    ├── globex.env        # customer B
-    └── internal.env      # your dev tenant
+my-app/
+└── .wirebound/
+    ├── default              # contains "dev" — used when --profile is omitted
+    └── profiles/
+        ├── dev.env
+        ├── test.env
+        └── production.env
 ```
 
-**Never commit profile files or real secrets.** The repo only ships `.env.example` and `docs/templates/` with placeholders.
+The CLI walks up from your current directory until it finds `.wirebound/`. Commands in subdirectories still pick up the repo root profiles.
+
+`wirebound setup` also appends `.wirebound/` to `.gitignore` when a `.gitignore` file exists and does not already ignore it.
+
+### Switching profiles
+
+```bash
+# Explicit profile
+wirebound auth0 delete-google-users --profile test
+
+# Shell default for the session
+export WIREBOUND_PROFILE=production
+wirebound auth0 delete-google-users
+
+# Repo default (.wirebound/default) when neither is set
+wirebound auth0 delete-google-users
+```
+
+List configured profiles:
+
+```bash
+wirebound setup --list
+```
+
+### Manual creation
+
+```bash
+mkdir -p .wirebound/profiles
+cp docs/templates/repo-config.env.example .wirebound/profiles/dev.env
+chmod 600 .wirebound/profiles/dev.env
+echo dev > .wirebound/default
+```
+
+Example `.wirebound/profiles/dev.env`:
+
+```dotenv
+AUTH0_DOMAIN=dev-tenant.us.auth0.com
+AUTH0_MGMT_CLIENT_ID=abcdefghijklmnopqrstuvwxyz1234
+AUTH0_MGMT_CLIENT_SECRET=your-secret-here-use-the-auth0-dashboard-value
+```
+
+### Legacy single-file config
+
+Older setups used `.wirebound/config.env` (no profile name). That still works when no default profile or `--profile` is set.
+
+### Setup flags
+
+| Flag | Description |
+|------|-------------|
+| `--profile <name>` | Profile name (prompted if omitted) |
+| `--default` | Set this profile as the repo default (`.wirebound/default`) |
+| `--list` | List repo-local profiles and exit |
+| `--force` | Overwrite existing profile without prompting |
+| `--dir <path>` | Target repo directory (default: current working directory) |
+| `--check` | Verify Auth0 credentials after writing config |
 
 ---
 
-## Profile file format
+## Global profile file format
 
 Copy the template:
 
 ```bash
+mkdir -p ~/.config/wirebound/profiles
 cp docs/templates/profile.env.example ~/.config/wirebound/profiles/acme.env
-chmod 600 ~/.config/wirebound/profiles/acme.env   # optional but recommended
+chmod 600 ~/.config/wirebound/profiles/acme.env
 ```
 
 Example `~/.config/wirebound/profiles/acme.env`:
@@ -68,10 +137,9 @@ AUTH0_MGMT_CLIENT_ID=abcdefghijklmnopqrstuvwxyz1234
 AUTH0_MGMT_CLIENT_SECRET=your-secret-here-use-the-auth0-dashboard-value
 ```
 
-### Using a profile
+### Using a global profile
 
 ```bash
-# Explicit
 wirebound auth0 delete-google-users --profile acme
 
 # Default profile via environment (set once in ~/.zshrc)
@@ -79,22 +147,11 @@ export WIREBOUND_PROFILE=acme
 wirebound auth0 delete-google-users
 ```
 
-### Multiple customers
-
-Switch profiles per invocation or per shell session:
-
-```bash
-wirebound auth0 delete-google-users --profile acme
-wirebound auth0 delete-google-users --profile globex
-
-# Or in separate terminal sessions with different WIREBOUND_PROFILE
-```
-
 ---
 
-## Environment variables (no profile file)
+## Environment variables (no config file)
 
-If you only ever touch one tenant, you can skip profiles and export vars in your shell or CI:
+If you only ever touch one tenant, you can skip config files and export vars in your shell or CI:
 
 ```bash
 export AUTH0_DOMAIN=acme.us.auth0.com
@@ -113,7 +170,7 @@ Oclif also reads these when resolving `--domain`, `--client-id`, and `--client-s
 | `AUTH0_DOMAIN` | Yes | Tenant domain, **without** `https://` (e.g. `acme.us.auth0.com`) |
 | `AUTH0_MGMT_CLIENT_ID` | Yes | Machine-to-Machine application Client ID |
 | `AUTH0_MGMT_CLIENT_SECRET` | Yes | M2M Client Secret (shown once when created — save it) |
-| `WIREBOUND_PROFILE` | No | Default profile name (same as `--profile`) |
+| `WIREBOUND_PROFILE` | No | Default global profile name (same as `--profile`) |
 
 ---
 
@@ -122,11 +179,13 @@ Oclif also reads these when resolving `--domain`, `--client-id`, and `--client-s
 For each Auth0 setting, **later steps override earlier ones**:
 
 1. Built-in defaults (e.g. `--rps` defaults to `2`)
-2. **Profile file** (when `--profile` or `$WIREBOUND_PROFILE` is set)
-3. **Process environment** (`export AUTH0_*=...`)
-4. **CLI flags** (`--domain`, `--client-id`, `--client-secret`)
+2. **Legacy repo config** (`.wirebound/config.env`, when no profile is selected)
+3. **Default repo profile** (`.wirebound/default` → `.wirebound/profiles/<name>.env`)
+4. **Named profile** (`--profile` or `$WIREBOUND_PROFILE` — repo-local first, then global)
+5. **Process environment** (`export AUTH0_*=...`)
+6. **CLI flags** (`--domain`, `--client-id`, `--client-secret`)
 
-Example: profile sets `AUTH0_DOMAIN=prod.auth0.com`, but you pass `--domain staging.auth0.com` → **staging** is used.
+Example: repo config sets `AUTH0_DOMAIN=prod.auth0.com`, but you pass `--domain staging.auth0.com` → **staging** is used.
 
 ---
 
@@ -142,7 +201,7 @@ Short version:
 2. Name it e.g. `Wirebound CLI`, type **Machine to Machine**
 3. Authorize it for **Auth0 Management API**
 4. Enable scopes: **`read:users`**, **`delete:users`**
-5. Copy **Domain** (Settings → Domain), **Client ID**, and **Client Secret** into your profile
+5. Copy **Domain** (Settings → Domain), **Client ID**, and **Client Secret** into config via `wirebound setup`
 
 ---
 
@@ -160,7 +219,7 @@ If nothing is configured, you should see:
 Missing required Auth0 configuration: domain (...), client ID (...), client secret (...)
 ```
 
-Fix: create a profile or export the three `AUTH0_*` variables.
+Fix: run `wirebound setup` in the repo or export the three `AUTH0_*` variables.
 
 ### Profile not found
 
@@ -177,7 +236,7 @@ Fix: create the file or fix the profile name.
 ### Successful dry-run
 
 ```bash
-wirebound auth0 delete-google-users --profile acme --verbose
+wirebound auth0 delete-google-users --verbose
 ```
 
 You should see token + user list activity (or “0 google-only users” if none match). **No deletes** unless you pass `--confirm`.
@@ -207,11 +266,12 @@ Always **dry-run in CI first**; add `--confirm` only when the pipeline is truste
 
 ## Security checklist
 
-- [ ] Profile files are mode `600` (`chmod 600 ~/.config/wirebound/profiles/*.env`)
-- [ ] Profiles are **not** in git (only `*.env.example` / templates in the repo)
+- [ ] Config files are mode `600` (`wirebound setup` sets this automatically)
+- [ ] `.wirebound/` is in `.gitignore` (setup adds it when possible)
+- [ ] Global profiles are **not** in git (only `*.env.example` / templates in the repo)
 - [ ] M2M app has **only** the scopes you need (`read:users`, `delete:users` for the current command)
 - [ ] Use a **dedicated** M2M app per customer/tenant where possible
-- [ ] Prefer `--profile` / `$WIREBOUND_PROFILE` over passing `--client-secret` on the command line
+- [ ] Prefer repo-local config or env vars over passing `--client-secret` on the command line
 - [ ] Default is **dry-run** — deletes require explicit `--confirm`
 
 ---
@@ -220,8 +280,9 @@ Always **dry-run in CI first**; add `--confirm` only when the pipeline is truste
 
 | Symptom | Likely cause | Fix |
 |---------|--------------|-----|
-| `Missing required Auth0 configuration` | No profile / env / flags | See [The 60-second version](#the-60-second-version) |
-| `Profile not found` | Wrong name or path | `ls ~/.config/wirebound/profiles/` |
+| `Missing required Auth0 configuration` | No repo config / profile / env / flags | Run `wirebound setup` in the repo |
+| `Profile not found` | Wrong global profile name | `ls ~/.config/wirebound/profiles/` |
+| Config ignored in subdirectory | No `.wirebound/config.env` in parent tree | Run setup at repo root |
 | `HTTP 401` | Wrong client secret or ID | Regenerate secret in Auth0 dashboard |
 | `HTTP 403` | Missing API scopes | Add `read:users` + `delete:users` on M2M app |
 | `HTTP 429` | Rate limit | CLI retries automatically; lower volume or reduce `--rps` |
@@ -233,5 +294,6 @@ Always **dry-run in CI first**; add `--confirm` only when the pipeline is truste
 ## Further reading
 
 - [Auth0 vendor guide](vendors/auth0.md) — dashboard setup, commands, rate limits
-- [Profile template](templates/profile.env.example) — copy-paste starter file
+- [Repo config template](templates/repo-config.env.example) — copy-paste starter for `.wirebound/config.env`
+- [Global profile template](templates/profile.env.example) — copy-paste starter for global profiles
 - [README](../README.md) — install and command index

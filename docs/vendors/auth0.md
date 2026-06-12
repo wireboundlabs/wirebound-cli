@@ -54,41 +54,38 @@ On the next screen (or **APIs** tab of the new app):
 
 Grant only what you need. For dry-runs you still need `read:users`; deletes require `delete:users`.
 
-### 4. Copy credentials into a Wirebound profile
+### 4. Save credentials with Wirebound setup
 
 1. Open the M2M app → **Settings**
 2. Copy **Client ID** → `AUTH0_MGMT_CLIENT_ID`
 3. Copy **Client Secret** → `AUTH0_MGMT_CLIENT_SECRET`  
-   (If you lost it: **Rotate** secret in the dashboard and update your profile.)
+   (If you lost it: **Rotate** secret in the dashboard and update your config.)
 
-Create the profile on your machine:
-
-```bash
-mkdir -p ~/.config/wirebound/profiles
-
-cat > ~/.config/wirebound/profiles/acme.env <<'EOF'
-AUTH0_DOMAIN=acme.us.auth0.com
-AUTH0_MGMT_CLIENT_ID=paste-client-id-here
-AUTH0_MGMT_CLIENT_SECRET=paste-client-secret-here
-EOF
-
-chmod 600 ~/.config/wirebound/profiles/acme.env
-```
-
-Or copy the repo template:
+In the customer repo:
 
 ```bash
-cp docs/templates/profile.env.example ~/.config/wirebound/profiles/acme.env
+cd ~/repos/my-app
+wirebound setup --profile dev --default
+wirebound setup --profile test
+wirebound setup --profile production
 ```
 
-### 5. Set default profile (optional)
+Paste domain, client ID, and client secret when prompted for each profile. List profiles with `wirebound setup --list`. Optional credential check:
 
 ```bash
-echo 'export WIREBOUND_PROFILE=acme' >> ~/.zshrc
-source ~/.zshrc
+wirebound setup --profile production --check
 ```
 
-### 6. Verify with a dry-run
+Or create a profile manually:
+
+```bash
+mkdir -p .wirebound/profiles
+cp docs/templates/repo-config.env.example .wirebound/profiles/dev.env
+chmod 600 .wirebound/profiles/dev.env
+echo dev > .wirebound/default
+```
+
+### 5. Verify with a dry-run
 
 ```bash
 wirebound auth0 delete-google-users --verbose
@@ -102,9 +99,19 @@ Expected:
 
 ---
 
-## Wiring credentials: three ways
+## Wiring credentials: four ways
 
-### A. Profile file (recommended)
+### A. Repo-local config (recommended)
+
+```bash
+cd ~/repos/customer-acme
+wirebound setup
+wirebound auth0 delete-google-users
+```
+
+File: `.wirebound/config.env` (auto-discovered from cwd upward)
+
+### B. Global profile file
 
 ```bash
 wirebound auth0 delete-google-users --profile acme
@@ -114,7 +121,7 @@ wirebound auth0 delete-google-users
 
 File: `~/.config/wirebound/profiles/acme.env`
 
-### B. Environment variables
+### C. Environment variables
 
 ```bash
 export AUTH0_DOMAIN=acme.us.auth0.com
@@ -126,7 +133,7 @@ wirebound auth0 delete-google-users
 
 Works in CI — inject vars from your secrets store.
 
-### C. CLI flags
+### D. CLI flags
 
 ```bash
 wirebound auth0 delete-google-users \
@@ -139,7 +146,7 @@ Avoid for production use (shell history).
 
 ### Precedence
 
-**CLI flags** beat **environment variables** beat **profile file** beat **defaults**.
+**CLI flags** beat **environment variables** beat **global profile file** beat **repo-local config** beat **defaults**.
 
 ---
 
@@ -163,16 +170,16 @@ Rationale: orphan Google users from failed linking should be removed; the post-l
 
 ```bash
 # Safe preview (default)
-wirebound auth0 delete-google-users --profile acme
+wirebound auth0 delete-google-users
 
 # Preview with pagination / rate-limit logs
-wirebound auth0 delete-google-users --profile acme --verbose
+wirebound auth0 delete-google-users --verbose
 
 # Scripting
-wirebound auth0 delete-google-users --profile acme --json
+wirebound auth0 delete-google-users --json
 
 # Delete at most 50 users, 2 requests/sec
-wirebound auth0 delete-google-users --profile acme --confirm --limit 50 --rps 2
+wirebound auth0 delete-google-users --confirm --limit 50 --rps 2
 ```
 
 #### Human output (dry-run)
@@ -209,10 +216,10 @@ Summary: found=10, eligible=3, would_delete=3
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `--domain` | `$AUTH0_DOMAIN` / profile | Tenant domain |
-| `--client-id` | `$AUTH0_MGMT_CLIENT_ID` / profile | M2M Client ID |
-| `--client-secret` | `$AUTH0_MGMT_CLIENT_SECRET` / profile | M2M Client Secret |
-| `--profile` | `$WIREBOUND_PROFILE` | Profile name |
+| `--domain` | `$AUTH0_DOMAIN` / config | Tenant domain |
+| `--client-id` | `$AUTH0_MGMT_CLIENT_ID` / config | M2M Client ID |
+| `--client-secret` | `$AUTH0_MGMT_CLIENT_SECRET` / config | M2M Client Secret |
+| `--profile` | `$WIREBOUND_PROFILE` | Global profile name |
 | `--limit` | unlimited | Max google-only users to process |
 | `--rps` | `2` | Management API requests per second |
 | `--verbose` | `false` | Log pagination and rate-limit waits |
@@ -246,8 +253,8 @@ The CLI defaults to `--rps 2` and queues every API call (token, list, delete). O
 
 | Error / symptom | Fix |
 |-----------------|-----|
-| `Missing required Auth0 configuration` | Add profile or `export AUTH0_*` — see [CONFIGURATION.md](../CONFIGURATION.md) |
-| `Profile not found: .../profiles/foo.env` | Create the file or fix the profile name |
+| `Missing required Auth0 configuration` | Add repo config or `export AUTH0_*` — see [CONFIGURATION.md](../CONFIGURATION.md) |
+| `Profile not found: .../profiles/foo.env` | Create the global profile or use `wirebound setup` in the repo |
 | HTTP **401** | Wrong client ID/secret; rotate secret in Auth0 and update profile |
 | HTTP **403** | M2M app missing `read:users` or `delete:users` on Management API |
 | HTTP **429** | Rate limited — CLI retries; reduce `--rps` or wait |
@@ -259,7 +266,7 @@ The CLI defaults to `--rps 2` and queues every API call (token, list, delete). O
 
 - Use a **dedicated** M2M app per customer where possible
 - Grant **minimum scopes** (`read:users` + `delete:users` only)
-- Store profiles as `chmod 600`; never commit them
+- Store config as `chmod 600`; never commit `.wirebound/`
 - Always dry-run before `--confirm`
 - Rotate client secrets if exposed
 
@@ -268,4 +275,5 @@ The CLI defaults to `--rps 2` and queues every API call (token, list, delete). O
 ## Related
 
 - [Configuration guide](../CONFIGURATION.md)
-- [Profile template](../templates/profile.env.example)
+- [Repo config template](../templates/repo-config.env.example)
+- [Global profile template](../templates/profile.env.example)

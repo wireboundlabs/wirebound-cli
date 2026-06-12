@@ -1,9 +1,32 @@
 import {Flags} from '@oclif/core'
 
 import {Auth0Client} from '../../lib/auth0/client.js'
+import {type Auth0User} from '../../lib/auth0/types.js'
 import {formatHumanResult, type CommandResult} from '../../lib/output.js'
 import {RateLimiter} from '../../lib/rate-limiter.js'
 import {Auth0Command} from '../../lib/commands/auth0-command.js'
+
+async function deleteEligibleUsers(
+  client: Auth0Client,
+  users: Auth0User[],
+  logVerbose: (message: string) => void,
+): Promise<{deleted: string[]; errors: CommandResult['errors']}> {
+  const deleted: string[] = []
+  const errors: CommandResult['errors'] = []
+
+  for (const user of users) {
+    try {
+      await client.deleteUser(user.user_id)
+      deleted.push(user.user_id)
+      logVerbose(`Deleted ${user.user_id}`)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      errors.push({message, user_id: user.user_id})
+    }
+  }
+
+  return {deleted, errors}
+}
 
 export default class Auth0DeleteGoogleUsers extends Auth0Command {
   static override description =
@@ -65,20 +88,12 @@ export default class Auth0DeleteGoogleUsers extends Auth0Command {
       found: totalRaw,
     }
 
-    if (!flags.confirm) {
-      this.emitResult(result, flags.json)
-      return
-    }
-
-    for (const user of users) {
-      try {
-        await client.deleteUser(user.user_id)
-        result.deleted.push(user.user_id)
-        this.logVerbose(`Deleted ${user.user_id}`, flags.verbose)
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error)
-        result.errors.push({message, user_id: user.user_id})
-      }
+    if (flags.confirm) {
+      const deletion = await deleteEligibleUsers(client, users, (message) =>
+        this.logVerbose(message, flags.verbose),
+      )
+      result.deleted = deletion.deleted
+      result.errors = deletion.errors
     }
 
     this.emitResult(result, flags.json)

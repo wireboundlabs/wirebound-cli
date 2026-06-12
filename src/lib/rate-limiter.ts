@@ -11,20 +11,23 @@ export interface RateLimiterOptions {
   onRetry?: (message: string) => void
 }
 
-function defaultAuth0RetryDelayMs(error: unknown): number | undefined {
-  if (!(error instanceof HttpError) || error.status !== 429) {
-    return undefined
-  }
-
-  const resetHeader = error.headers.get('x-ratelimit-reset')
+function parseRateLimitResetMs(headers: Headers): number {
+  const resetHeader = headers.get('x-ratelimit-reset')
   if (!resetHeader) return 1000
 
   const resetEpoch = Number.parseInt(resetHeader, 10)
   if (Number.isNaN(resetEpoch)) return 1000
 
-  const waitMs = Math.max(0, resetEpoch * 1000 - Date.now())
+  return Math.max(0, resetEpoch * 1000 - Date.now())
+}
+
+function defaultAuth0RetryDelayMs(error: unknown): number | undefined {
+  if (!(error instanceof HttpError) || error.status !== 429) {
+    return undefined
+  }
+
   const jitter = 50 + Math.floor(Math.random() * 150)
-  return waitMs + jitter
+  return parseRateLimitResetMs(error.headers) + jitter
 }
 
 export class RateLimiter {

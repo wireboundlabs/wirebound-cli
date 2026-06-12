@@ -1,0 +1,10 @@
+{
+  "$schema": "https://fallow.tools/schema/config.json",
+  "entry": [
+    "src/commands/auth0/delete-google-users.ts",
+    "src/commands/setup.ts"
+  ],
+  "health": {
+    "ignore": ["test/**"]
+  }
+}

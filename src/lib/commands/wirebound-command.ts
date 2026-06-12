@@ -1,6 +1,7 @@
 import {Command, Flags} from '@oclif/core'
+import {CLIError} from '@oclif/core/errors'
 
-import {loadProfile} from '../config/profile.js'
+import {resolveProfileVars} from '../config/profile.js'
 
 export abstract class WireboundCommand extends Command {
   static baseFlags = {
@@ -10,7 +11,7 @@ export abstract class WireboundCommand extends Command {
     }),
     profile: Flags.string({
       description:
-        'Load credentials from ~/.config/wirebound/profiles/<name>.env (default: $WIREBOUND_PROFILE)',
+        'Profile name — loads .wirebound/profiles/<name>.env in the repo (or ~/.config/wirebound/profiles/<name>.env). Default: $WIREBOUND_PROFILE, then .wirebound/default, then legacy config.env.',
       env: 'WIREBOUND_PROFILE',
     }),
     verbose: Flags.boolean({
@@ -21,9 +22,13 @@ export abstract class WireboundCommand extends Command {
 
   protected profileVars?: Record<string, string>
 
-  protected async loadProfileIfNeeded(profile?: string): Promise<void> {
-    if (!profile) return
-    this.profileVars = loadProfile(profile)
+  protected async loadConfigVars(profile?: string): Promise<void> {
+    try {
+      this.profileVars = resolveProfileVars(profile)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      throw new CLIError(message)
+    }
   }
 
   protected logVerbose(message: string, verbose: boolean): void {

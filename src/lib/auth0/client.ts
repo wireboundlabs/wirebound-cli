@@ -1,5 +1,5 @@
 import {type Auth0Config} from '../config/auth0.js'
-import {assertOk, HttpError} from '../http-error.js'
+import {assertOk} from '../http-error.js'
 import {RateLimiter} from '../rate-limiter.js'
 import {isGoogleOnlyUser} from './filters.js'
 import {
@@ -11,6 +11,32 @@ import {
 export interface ListGoogleOnlyUsersOptions {
   limit?: number
   onPage?: (info: {page: number; total: number; rawCount: number}) => void
+}
+
+function addEligibleUsers(
+  users: Auth0User[],
+  eligible: Auth0User[],
+  limit?: number,
+): boolean {
+  const remaining =
+    limit === undefined ? users.length : Math.max(0, limit - eligible.length)
+  const toAdd = users.filter(isGoogleOnlyUser).slice(0, remaining)
+  eligible.push(...toAdd)
+
+  return limit !== undefined && eligible.length >= limit
+}
+
+function isLastUserPage(
+  data: Auth0UsersSearchResponse,
+  page: number,
+  perPage: number,
+): boolean {
+  if (data.users.length === 0) {
+    return true
+  }
+
+  const fetched = (page + 1) * perPage
+  return fetched >= data.total || fetched >= 1000
 }
 
 export class Auth0Client {
@@ -25,19 +51,21 @@ export class Auth0Client {
     return `https://${this.config.domain}`
   }
 
+  private async fetchOnce(path: string, init: RequestInit): Promise<Response> {
+    const authedInit = await this.withAuth(init)
+    let response = await fetch(`${this.baseUrl}${path}`, authedInit)
+
+    if (response.status === 401 && this.token) {
+      this.token = undefined
+      const retryInit = await this.withAuth(init)
+      response = await fetch(`${this.baseUrl}${path}`, retryInit)
+    }
+
+    return assertOk(response)
+  }
+
   private async fetch(path: string, init?: RequestInit): Promise<Response> {
-    return this.limiter.schedule(async () => {
-      const authedInit = await this.withAuth(init ?? {})
-      let response = await fetch(`${this.baseUrl}${path}`, authedInit)
-
-      if (response.status === 401 && this.token) {
-        this.token = undefined
-        const retryInit = await this.withAuth(init ?? {})
-        response = await fetch(`${this.baseUrl}${path}`, retryInit)
-      }
-
-      return assertOk(response)
-    })
+    return this.limiter.schedule(() => this.fetchOnce(path, init ?? {}))
   }
 
   private async withAuth(init: RequestInit): Promise<RequestInit> {
@@ -78,44 +106,40 @@ export class Auth0Client {
     const eligible: Auth0User[] = []
     let totalRaw = 0
     let page = 0
+    let done = false
     const perPage = 100
-    const query = 'identities.provider:"google-oauth2"'
 
-    while (true) {
-      const params = new URLSearchParams({
-        include_totals: 'true',
-        page: String(page),
-        per_page: String(perPage),
-        q: query,
-        search_engine: 'v3',
-      })
-
-      const response = await this.fetch(
-        `/api/v2/users?${params.toString()}`,
-        await this.withAuth({method: 'GET'}),
-      )
-      const data = (await response.json()) as Auth0UsersSearchResponse
+    do {
+      const data = await this.fetchUserSearchPage(page, perPage)
       totalRaw += data.users.length
       options.onPage?.({page, rawCount: data.users.length, total: data.total})
-
-      for (const user of data.users) {
-        if (isGoogleOnlyUser(user)) {
-          eligible.push(user)
-          if (options.limit !== undefined && eligible.length >= options.limit) {
-            return {totalRaw, users: eligible}
-          }
-        }
-      }
-
-      const fetched = (page + 1) * perPage
-      if (data.users.length === 0 || fetched >= data.total || fetched >= 1000) {
-        break
-      }
-
+      done =
+        addEligibleUsers(data.users, eligible, options.limit) ||
+        isLastUserPage(data, page, perPage)
       page += 1
-    }
+    } while (!done)
 
     return {totalRaw, users: eligible}
+  }
+
+  private async fetchUserSearchPage(
+    page: number,
+    perPage: number,
+  ): Promise<Auth0UsersSearchResponse> {
+    const params = new URLSearchParams({
+      include_totals: 'true',
+      page: String(page),
+      per_page: String(perPage),
+      q: 'identities.provider:"google-oauth2"',
+      search_engine: 'v3',
+    })
+
+    const response = await this.fetch(
+      `/api/v2/users?${params.toString()}`,
+      await this.withAuth({method: 'GET'}),
+    )
+
+    return (await response.json()) as Auth0UsersSearchResponse
   }
 
   async deleteUser(userId: string): Promise<void> {
@@ -124,9 +148,5 @@ export class Auth0Client {
       `/api/v2/users/${encodedId}`,
       await this.withAuth({method: 'DELETE'}),
     )
-  }
-
-  static isForbidden(error: unknown): boolean {
-    return error instanceof HttpError && error.status === 403
   }
 }

@@ -1,6 +1,6 @@
 # @wireboundlabs/cli
 
-Wirebound customer operations CLI. Install once, point at a customer’s Auth0 tenant, run operational commands.
+Wirebound customer operations CLI. Install once, run `wirebound setup` in each customer repo, run operational commands.
 
 **Binary:** `wirebound`
 
@@ -29,47 +29,65 @@ You need **three values** from Auth0 for any `auth0` command:
 
 Those map to `AUTH0_DOMAIN`, `AUTH0_MGMT_CLIENT_ID`, and `AUTH0_MGMT_CLIENT_SECRET`.
 
-**Don’t have an M2M app yet?** Follow [Set up M2M credentials in Auth0](docs/vendors/auth0.md#set-up-machine-to-machine-credentials-in-auth0) (5 minutes).
+**Don't have an M2M app yet?** Follow [Set up M2M credentials in Auth0](docs/vendors/auth0.md#set-up-machine-to-machine-credentials-in-auth0) (5 minutes).
 
-### Recommended: profile file + default profile
+### Recommended: repo-local setup
 
-Best for working with one or more customers. Credentials stay in one place; you don’t pass secrets on the command line.
+Best for multiple customer repos and multiple Auth0 environments (dev, test, production) in one repo.
 
 ```bash
-# 1. Create profile directory
-mkdir -p ~/.config/wirebound/profiles
-
-# 2. Create profile (paste your Auth0 values from the dashboard)
-cat > ~/.config/wirebound/profiles/acme.env <<'EOF'
-AUTH0_DOMAIN=acme.us.auth0.com
-AUTH0_MGMT_CLIENT_ID=paste-client-id-here
-AUTH0_MGMT_CLIENT_SECRET=paste-client-secret-here
-EOF
-
-chmod 600 ~/.config/wirebound/profiles/acme.env
+cd ~/repos/my-app
+wirebound setup --profile dev --default
+wirebound setup --profile test
+wirebound setup --profile production
 ```
 
-Or copy the template shipped with the package:
+Interactive prompts write `.wirebound/profiles/<name>.env` (mode `600`) and add `.wirebound/` to `.gitignore` if needed.
+
+List profiles:
 
 ```bash
-cp "$(npm root -g)/@wireboundlabs/cli/docs/templates/profile.env.example" \
-   ~/.config/wirebound/profiles/acme.env
+wirebound setup --list
+```
+
+Verify credentials while setting up:
+
+```bash
+wirebound setup --profile production --check
+```
+
+Switch profiles per command:
+
+```bash
+wirebound auth0 delete-google-users --profile test
+export WIREBOUND_PROFILE=production
+wirebound auth0 delete-google-users
+```
+
+When a default is set (`.wirebound/default`), omit `--profile`:
+
+```bash
+wirebound auth0 delete-google-users
+```
+
+Switch repos and run setup again in each one:
+
+```bash
+cd ~/repos/customer-globex
+wirebound setup --profile dev --default
+wirebound auth0 delete-google-users
+```
+
+### Alternative: global profile file
+
+For a shared machine profile outside any repo:
+
+```bash
+mkdir -p ~/.config/wirebound/profiles
+cp docs/templates/profile.env.example ~/.config/wirebound/profiles/acme.env
 $EDITOR ~/.config/wirebound/profiles/acme.env
 chmod 600 ~/.config/wirebound/profiles/acme.env
-```
-
-```bash
-# 3. Default profile — no --profile on every command
-echo 'export WIREBOUND_PROFILE=acme' >> ~/.zshrc   # or ~/.bashrc
-source ~/.zshrc
-```
-
-Your `acme.env` should look like:
-
-```dotenv
-AUTH0_DOMAIN=acme.us.auth0.com
-AUTH0_MGMT_CLIENT_ID=abc123...
-AUTH0_MGMT_CLIENT_SECRET=long-secret-from-auth0-dashboard
+export WIREBOUND_PROFILE=acme   # optional default
 ```
 
 ### Alternative: shell environment only
@@ -82,8 +100,6 @@ export AUTH0_MGMT_CLIENT_ID=your-client-id
 export AUTH0_MGMT_CLIENT_SECRET=your-client-secret
 ```
 
-No profile file and no `--profile` flag needed.
-
 ### Alternative: flags (avoid for secrets)
 
 ```bash
@@ -93,7 +109,7 @@ wirebound auth0 delete-google-users \
   --client-secret '...'
 ```
 
-Secrets may be stored in shell history — use profiles or env vars instead.
+Secrets may be stored in shell history — use repo-local config or env vars instead.
 
 ---
 
@@ -115,24 +131,19 @@ wirebound auth0 delete-google-users --json
 wirebound auth0 delete-google-users --confirm
 ```
 
-If you didn’t set `WIREBOUND_PROFILE`:
-
-```bash
-wirebound auth0 delete-google-users --profile acme
-```
-
 ---
 
 ## Configuration reference
 
 | Method | When to use |
 |--------|-------------|
-| Profile + `$WIREBOUND_PROFILE` | **Default recommendation** — multiple customers, daily use |
-| `--profile <name>` | One-off switch between customers |
+| **`wirebound setup --profile <name>`** | **Default recommendation** — multiple Auth0 envs per repo |
+| `--profile <name>` / `$WIREBOUND_PROFILE` | Switch between repo or global profiles |
+| Global profile files | Shared profiles outside repo context |
 | `export AUTH0_*` | Single tenant, CI/CD |
 | `--domain` / `--client-id` / `--client-secret` | Debugging only |
 
-**Precedence** (highest wins): CLI flags → environment variables → profile file → defaults.
+**Precedence** (highest wins): CLI flags → environment variables → named profile (repo-local, then global) → default profile (`.wirebound/default`) → legacy `config.env` → defaults.
 
 Full guide: **[docs/CONFIGURATION.md](docs/CONFIGURATION.md)** — precedence, CI, troubleshooting, security.
 
@@ -142,6 +153,7 @@ Full guide: **[docs/CONFIGURATION.md](docs/CONFIGURATION.md)** — precedence, C
 
 | Command | Description |
 |---------|-------------|
+| `wirebound setup` | Interactive setup — create repo-local profiles under `.wirebound/profiles/` |
 | `wirebound auth0 delete-google-users` | Delete users with exactly one `google-oauth2` identity (dry-run by default) |
 
 Vendor docs:
@@ -157,7 +169,7 @@ Vendor docs:
 | `AUTH0_DOMAIN` | Tenant domain (no `https://`) |
 | `AUTH0_MGMT_CLIENT_ID` | M2M Client ID |
 | `AUTH0_MGMT_CLIENT_SECRET` | M2M Client Secret |
-| `WIREBOUND_PROFILE` | Default profile name (optional) |
+| `WIREBOUND_PROFILE` | Default global profile name (optional) |
 
 ---
 
@@ -165,7 +177,7 @@ Vendor docs:
 
 | Flag | Description |
 |------|-------------|
-| `--profile <name>` | Load `~/.config/wirebound/profiles/<name>.env` (or set `WIREBOUND_PROFILE`) |
+| `--profile <name>` | Load `.wirebound/profiles/<name>.env` (repo) or global profile |
 | `--confirm` | Perform deletes (default is dry-run) |
 | `--json` | Machine-readable output |
 | `--verbose` | Log pagination and rate-limit retries |
@@ -190,6 +202,7 @@ cd wirebound-cli
 npm install
 npm run build
 npm test
+./bin/dev.js setup --help
 ./bin/dev.js auth0 delete-google-users --help
 ```
 
