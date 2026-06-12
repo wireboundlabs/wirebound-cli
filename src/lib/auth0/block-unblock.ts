@@ -1,10 +1,10 @@
 import {Flags} from '@oclif/core'
 
-import {Auth0Client} from '../../../lib/auth0/client.js'
-import {runUserBlockMutation} from '../../../lib/auth0/user-mutation.js'
-import {formatUserMutationResult} from '../../../lib/output.js'
-import {Auth0Command} from '../../../lib/commands/auth0-command.js'
-import {RateLimiter} from '../../../lib/rate-limiter.js'
+import {Auth0Command} from '../commands/auth0-command.js'
+import {formatUserMutationResult} from '../output.js'
+import {RateLimiter} from '../rate-limiter.js'
+import {Auth0Client} from './client.js'
+import {runUserBlockMutation} from './user-mutation.js'
 
 const targetFlags = {
   email: Flags.string({

@@ -6,7 +6,6 @@
     "src/commands/auth0/users/search.ts",
     "src/commands/auth0/users/get.ts",
     "src/commands/auth0/users/block.ts",
-    "src/commands/auth0/users/block-shared.ts",
     "src/commands/auth0/users/unblock.ts",
     "src/commands/auth0/logs/search.ts"
   ],
