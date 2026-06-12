@@ -9,9 +9,20 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![GitHub stars](https://img.shields.io/github/stars/wireboundlabs/wirebound-cli?style=social)](https://github.com/wireboundlabs/wirebound-cli/stargazers)
 
-Wirebound customer operations CLI. Install once, run `wirebound setup` in each customer repo, run operational commands.
+**Auth0 operations from your terminal.** Point `wirebound` at a tenant, run maintenance tasks with dry-run defaults, and ship scripts with JSON output — no dashboard clicking required.
+
+Install once globally. Configure per repo with `wirebound setup`. Switch between dev, staging, and production with `--profile`.
 
 **Binary:** `wirebound`
+
+---
+
+## Why wirebound?
+
+- **Safe by default** — destructive commands dry-run until you pass `--confirm`
+- **Repo-native config** — credentials live in `.wirebound/profiles/` (gitignored), one profile per environment
+- **Automation-ready** — `--json`, rate-limit handling, and predictable exit codes for CI
+- **Multi-tenant friendly** — run the same commands across projects; each repo keeps its own Auth0 config
 
 ---
 
@@ -26,135 +37,110 @@ Requires **Node.js 20+**.
 
 ---
 
-## First-time setup (after npm install)
+## Quick start
 
-You need **three values** from Auth0 for any `auth0` command:
+### 1. Connect a tenant
 
-| What | Where in Auth0 |
-|------|----------------|
-| Tenant domain | Dashboard → **Settings** → **Domain** |
-| Client ID | Applications → your M2M app → **Settings** |
-| Client Secret | Same page (only shown when the app is created) |
+You need a **Machine-to-Machine** app with Management API access. [Set up M2M credentials in Auth0](docs/vendors/auth0.md#set-up-machine-to-machine-credentials-in-auth0) if you don't have one yet (~5 min).
 
-Those map to `AUTH0_DOMAIN`, `AUTH0_MGMT_CLIENT_ID`, and `AUTH0_MGMT_CLIENT_SECRET`.
-
-**Don't have an M2M app yet?** Follow [Set up M2M credentials in Auth0](docs/vendors/auth0.md#set-up-machine-to-machine-credentials-in-auth0) (5 minutes).
-
-### Recommended: repo-local setup
-
-Best for multiple customer repos and multiple Auth0 environments (dev, test, production) in one repo.
+From your project root:
 
 ```bash
-cd ~/repos/my-app
 wirebound setup --profile dev --default
-wirebound setup --profile test
-wirebound setup --profile production
 ```
 
-Interactive prompts write `.wirebound/profiles/<name>.env` (mode `600`) and add `.wirebound/` to `.gitignore` if needed.
-
-List profiles:
+Interactive prompts collect your tenant domain, client ID, and client secret. Verify them in one shot:
 
 ```bash
+wirebound setup --profile dev --check
+```
+
+Add more environments anytime:
+
+```bash
+wirebound setup --profile staging
+wirebound setup --profile production
 wirebound setup --list
 ```
 
-Verify credentials while setting up:
+### 2. Run a command
+
+**Dry-run is the default.** Nothing changes until you opt in with `--confirm`.
 
 ```bash
-wirebound setup --profile production --check
+# Preview what would happen (safe)
+wirebound auth0 delete-google-users
+
+# Same, with pagination and rate-limit logs
+wirebound auth0 delete-google-users --verbose
+
+# Pipe into your own tooling
+wirebound auth0 delete-google-users --json
+
+# Execute after reviewing the dry-run output
+wirebound auth0 delete-google-users --confirm
 ```
 
-Switch profiles per command:
+### 3. Switch environments
 
 ```bash
-wirebound auth0 delete-google-users --profile test
+wirebound auth0 delete-google-users --profile staging
 export WIREBOUND_PROFILE=production
 wirebound auth0 delete-google-users
 ```
 
-When a default is set (`.wirebound/default`), omit `--profile`:
+When a default profile is set (`.wirebound/default`), omit `--profile`:
 
 ```bash
 wirebound auth0 delete-google-users
-```
-
-Switch repos and run setup again in each one:
-
-```bash
-cd ~/repos/customer-globex
-wirebound setup --profile dev --default
-wirebound auth0 delete-google-users
-```
-
-### Alternative: global profile file
-
-For a shared machine profile outside any repo:
-
-```bash
-mkdir -p ~/.config/wirebound/profiles
-cp docs/templates/profile.env.example ~/.config/wirebound/profiles/acme.env
-$EDITOR ~/.config/wirebound/profiles/acme.env
-chmod 600 ~/.config/wirebound/profiles/acme.env
-export WIREBOUND_PROFILE=acme   # optional default
-```
-
-### Alternative: shell environment only
-
-Fine for a single tenant or CI:
-
-```bash
-export AUTH0_DOMAIN=acme.us.auth0.com
-export AUTH0_MGMT_CLIENT_ID=your-client-id
-export AUTH0_MGMT_CLIENT_SECRET=your-client-secret
-```
-
-### Alternative: flags (avoid for secrets)
-
-```bash
-wirebound auth0 delete-google-users \
-  --domain acme.us.auth0.com \
-  --client-id '...' \
-  --client-secret '...'
-```
-
-Secrets may be stored in shell history — use repo-local config or env vars instead.
-
----
-
-## Run your first command
-
-**Dry-run is the default.** Nothing is deleted until you pass `--confirm`.
-
-```bash
-# List google-only users that would be deleted (safe)
-wirebound auth0 delete-google-users
-
-# Same, with extra logging
-wirebound auth0 delete-google-users --verbose
-
-# JSON for scripts
-wirebound auth0 delete-google-users --json
-
-# Actually delete (only after reviewing dry-run output)
-wirebound auth0 delete-google-users --confirm
 ```
 
 ---
 
-## Configuration reference
+## Configuration
 
 | Method | When to use |
 |--------|-------------|
-| **`wirebound setup --profile <name>`** | **Default recommendation** — multiple Auth0 envs per repo |
-| `--profile <name>` / `$WIREBOUND_PROFILE` | Switch between repo or global profiles |
-| Global profile files | Shared profiles outside repo context |
-| `export AUTH0_*` | Single tenant, CI/CD |
-| `--domain` / `--client-id` / `--client-secret` | Debugging only |
+| **`wirebound setup --profile <name>`** | **Recommended** — per-repo, per-environment config |
+| `--profile` / `$WIREBOUND_PROFILE` | Switch tenants or environments on the fly |
+| Global profile files (`~/.config/wirebound/profiles/`) | Shared credentials outside a repo |
+| `export AUTH0_*` | CI/CD and one-off scripts |
+| CLI flags (`--domain`, `--client-id`, …) | Debugging only — avoid for secrets |
 
-**Precedence** (highest wins): CLI flags → environment variables → named profile (repo-local, then global) → default profile (`.wirebound/default`) → legacy `config.env` → defaults.
+**Precedence** (highest wins): CLI flags → environment variables → named profile (repo-local, then global) → default profile (`.wirebound/default`) → legacy `config.env`.
 
-Full guide: **[docs/CONFIGURATION.md](docs/CONFIGURATION.md)** — precedence, CI, troubleshooting, security.
+Full guide: **[docs/CONFIGURATION.md](docs/CONFIGURATION.md)**
+
+### Repo layout
+
+```
+my-app/
+└── .wirebound/
+    ├── default              # e.g. "dev"
+    └── profiles/
+        ├── dev.env
+        ├── staging.env
+        └── production.env
+```
+
+### Other setup options
+
+**Global profile** (any machine, no repo context):
+
+```bash
+mkdir -p ~/.config/wirebound/profiles
+cp docs/templates/profile.env.example ~/.config/wirebound/profiles/my-tenant.env
+chmod 600 ~/.config/wirebound/profiles/my-tenant.env
+export WIREBOUND_PROFILE=my-tenant
+```
+
+**Environment variables** (CI):
+
+```bash
+export AUTH0_DOMAIN=your-tenant.us.auth0.com
+export AUTH0_MGMT_CLIENT_ID=your-client-id
+export AUTH0_MGMT_CLIENT_SECRET=your-client-secret
+```
 
 ---
 
@@ -162,44 +148,48 @@ Full guide: **[docs/CONFIGURATION.md](docs/CONFIGURATION.md)** — precedence, C
 
 | Command | Description |
 |---------|-------------|
-| `wirebound setup` | Interactive setup — create repo-local profiles under `.wirebound/profiles/` |
-| `wirebound auth0 delete-google-users` | Delete users with exactly one `google-oauth2` identity (dry-run by default) |
+| `wirebound setup` | Interactive Auth0 credential setup — repo-local profiles under `.wirebound/profiles/` |
+| `wirebound auth0 delete-google-users` | Remove users with exactly one Google identity (dry-run by default) |
 
-Vendor docs:
-
-- [Auth0](docs/vendors/auth0.md) — M2M setup, scopes, flags, rate limits
+More detail: [Auth0 vendor guide](docs/vendors/auth0.md)
 
 ---
 
-## Auth0 variables
+## Auth0 credentials
 
 | Variable | Description |
 |----------|-------------|
 | `AUTH0_DOMAIN` | Tenant domain (no `https://`) |
 | `AUTH0_MGMT_CLIENT_ID` | M2M Client ID |
 | `AUTH0_MGMT_CLIENT_SECRET` | M2M Client Secret |
-| `WIREBOUND_PROFILE` | Default global profile name (optional) |
+| `WIREBOUND_PROFILE` | Default profile name (optional) |
+
+| Auth0 dashboard | Maps to |
+|-----------------|---------|
+| Settings → Domain | `AUTH0_DOMAIN` |
+| Applications → M2M app → Client ID | `AUTH0_MGMT_CLIENT_ID` |
+| Applications → M2M app → Client Secret | `AUTH0_MGMT_CLIENT_SECRET` |
 
 ---
 
-## Common flags
+## Flags
 
 | Flag | Description |
 |------|-------------|
-| `--profile <name>` | Load `.wirebound/profiles/<name>.env` (repo) or global profile |
-| `--confirm` | Perform deletes (default is dry-run) |
+| `--profile <name>` | Load `.wirebound/profiles/<name>.env` or a global profile |
+| `--confirm` | Perform destructive actions (default is dry-run) |
 | `--json` | Machine-readable output |
 | `--verbose` | Log pagination and rate-limit retries |
-| `--limit <n>` | Max users to process |
-| `--rps <n>` | API requests per second (default `2`) |
+| `--limit <n>` | Cap how many records to process |
+| `--rps <n>` | Management API requests per second (default `2`) |
 
 ---
 
-## Rate limiting & limits
+## Rate limits
 
-- All Auth0 Management API traffic is throttled (default **2 req/s**). Override with `--rps`.
-- On HTTP **429**, the CLI waits for `X-RateLimit-Reset` and retries.
-- User **search** returns at most **1000** results per query (Auth0 platform limit).
+Auth0 throttles Management API traffic. `wirebound` queues requests (default **2 req/s**, override with `--rps`) and automatically retries on **HTTP 429** using `X-RateLimit-Reset`.
+
+User search is capped at **1000 results per query** (Auth0 platform limit).
 
 ---
 

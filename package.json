@@ -1,7 +1,7 @@
 {
   "name": "@wireboundlabs/cli",
   "version": "0.1.2",
-  "description": "Wirebound customer operations CLI",
+  "description": "Auth0 operations CLI — tenant maintenance from the terminal with dry-run defaults and repo-local profiles",
   "type": "module",
   "license": "MIT",
   "author": "Wirebound Labs",
