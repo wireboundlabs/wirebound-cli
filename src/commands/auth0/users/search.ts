@@ -46,15 +46,20 @@ export default class Auth0UsersSearch extends Auth0Command {
 
     this.logVerbose(`Searching users on ${config.domain}`, flags.verbose)
 
+    const progress = this.createProgress(flags)
+    progress.fetchStart('Searching users', flags.limit)
+
     const {total, truncated, users} = await client.searchUsers(flags.query, {
       limit: flags.limit,
-      onPage: ({page, rawCount, total: pageTotal}) => {
-        this.logVerbose(
+      onPage: this.pageProgressHandler(
+        progress,
+        flags.verbose,
+        ({page, rawCount, total: pageTotal}) =>
           `Page ${page}: ${rawCount} result(s), ${pageTotal} total match(es) in search`,
-          flags.verbose,
-        )
-      },
+      ),
     })
+
+    progress.fetchStop()
 
     const fields = parseUserFields(flags.fields)
     const result: UserSearchResult = {total, truncated, users}

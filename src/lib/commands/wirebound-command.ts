@@ -2,6 +2,11 @@ import {Command, Flags} from '@oclif/core'
 import {CLIError} from '@oclif/core/errors'
 
 import {resolveProfileVars} from '@/lib/config/profile'
+import {
+  createProgressContext,
+  createProgressReporter,
+  type ProgressReporter,
+} from '@/lib/progress'
 
 export abstract class WireboundCommand extends Command {
   static baseFlags = {
@@ -34,6 +39,29 @@ export abstract class WireboundCommand extends Command {
   protected logVerbose(message: string, verbose: boolean): void {
     if (verbose) {
       this.log(message)
+    }
+  }
+
+  protected createProgress(flags: {
+    json?: boolean
+    verbose?: boolean
+  }): ProgressReporter {
+    return createProgressReporter(createProgressContext(flags))
+  }
+
+  protected pageProgressHandler(
+    progress: ProgressReporter,
+    verbose: boolean,
+    format: (info: {
+      collected: number
+      page: number
+      rawCount: number
+      total: number
+    }) => string,
+  ): (info: {collected: number; page: number; rawCount: number; total: number}) => void {
+    return (info) => {
+      this.logVerbose(format(info), verbose)
+      progress.fetchPage(info)
     }
   }
 }

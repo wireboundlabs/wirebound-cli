@@ -22,10 +22,12 @@ export default class Auth0UsersBlock extends Auth0Command {
         logVerbose: (message, verbose) => this.logVerbose(message, verbose),
       },
       {
-      action: 'block',
-      blocked: true,
-      flags,
-      resolveConfig: (input) => this.resolveConfig(input),
-    })
+        action: 'block',
+        blocked: true,
+        flags,
+        progress: this.createProgress(flags),
+        resolveConfig: (input) => this.resolveConfig(input),
+      },
+    )
   }
 }

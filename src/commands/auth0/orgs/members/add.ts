@@ -26,6 +26,8 @@ export default class Auth0OrgsMembersAdd extends Auth0Command {
     })
     const client = new Auth0Client(config, limiter)
 
+    const progress = this.createProgress(flags)
+
     const result = await runOrgMemberMutation(client, {
       action: 'add',
       confirm: flags.confirm,
@@ -35,6 +37,7 @@ export default class Auth0OrgsMembersAdd extends Auth0Command {
       logVerbose: (message) => this.logVerbose(message, flags.verbose),
       orgId: flags['org-id'],
       orgName: flags['org-name'],
+      progress,
       query: flags.query,
     })
 

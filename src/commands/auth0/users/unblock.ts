@@ -22,10 +22,12 @@ export default class Auth0UsersUnblock extends Auth0Command {
         logVerbose: (message, verbose) => this.logVerbose(message, verbose),
       },
       {
-      action: 'unblock',
-      blocked: false,
-      flags,
-      resolveConfig: (input) => this.resolveConfig(input),
-    })
+        action: 'unblock',
+        blocked: false,
+        flags,
+        progress: this.createProgress(flags),
+        resolveConfig: (input) => this.resolveConfig(input),
+      },
+    )
   }
 }

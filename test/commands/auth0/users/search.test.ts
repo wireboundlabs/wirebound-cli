@@ -55,6 +55,23 @@ describe('auth0 users search', () => {
     expect(nock.pendingMocks()).to.have.length(0)
   })
 
+  it('logs page progress in verbose mode', async () => {
+    mockToken()
+    mockUserSearch([sampleUser])
+
+    const {stdout} = await runCommand([
+      'auth0:users:search',
+      ...authFlags,
+      '--query',
+      'email:user@example.com',
+      '--verbose',
+    ])
+
+    expect(stdout).to.contain('Page 0')
+    expect(stdout).to.contain('user@example.com')
+    expect(nock.pendingMocks()).to.have.length(0)
+  })
+
   it('returns json output', async () => {
     mockToken()
     mockUserSearch([sampleUser])

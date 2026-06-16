@@ -8,6 +8,10 @@ import {
   promptProfileName,
   promptSetDefault,
 } from '@/lib/setup/prompt-auth0-credentials'
+import {
+  createProgressContext,
+  createProgressReporter,
+} from '@/lib/progress'
 import {listSetupProfiles, runSetup} from '@/lib/setup/run-setup'
 
 export default class Setup extends Command {
@@ -68,6 +72,7 @@ export default class Setup extends Command {
       force: flags.force,
       log: (message) => this.log(message),
       profileName,
+      progress: createProgressReporter(createProgressContext({})),
       setDefault: flags.default ? true : undefined,
       targetDir,
     })

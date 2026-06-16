@@ -3,7 +3,8 @@
   "check-coverage": true,
   "include": ["src/**/*.ts"],
   "exclude": [
-    "src/lib/setup/prompt-auth0-credentials.ts"
+    "src/lib/setup/prompt-auth0-credentials.ts",
+    "src/lib/auth0/types.ts"
   ],
   "reporter": ["text", "text-summary", "lcov"],
   "lines": 85,

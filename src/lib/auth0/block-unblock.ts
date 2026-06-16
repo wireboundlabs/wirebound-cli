@@ -2,6 +2,7 @@ import {Flags} from '@oclif/core'
 
 import {Auth0Command} from '@/lib/commands/auth0-command'
 import {formatUserMutationResult} from '@/lib/output'
+import {type ProgressReporter} from '@/lib/progress'
 import {RateLimiter} from '@/lib/rate-limiter'
 import {Auth0Client} from './client'
 import {runUserBlockMutation} from './user-mutation'
@@ -62,6 +63,7 @@ export async function runBlockUnblockCommand(
       profile?: string
       verbose?: boolean
     }) => Promise<{domain: string; rps: number; clientId: string; clientSecret: string}>
+    progress?: ProgressReporter
   },
 ): Promise<void> {
   const config = await options.resolveConfig(options.flags)
@@ -79,6 +81,7 @@ export async function runBlockUnblockCommand(
     id: options.flags.id,
     limit: options.flags.limit,
     logVerbose: (message) => host.logVerbose(message, options.flags.verbose ?? false),
+    progress: options.progress,
     query: options.flags.query,
   })
 

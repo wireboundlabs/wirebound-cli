@@ -38,22 +38,29 @@ export default class Auth0OrgsMembersList extends Auth0Command {
     })
     const client = new Auth0Client(config, limiter)
 
-    const org = await resolveOrganization(client, {
-      orgId: flags['org-id'],
-      orgName: flags['org-name'],
-    })
+    const progress = this.createProgress(flags)
+    const org = await progress.spinAsync('Resolving organization', () =>
+      resolveOrganization(client, {
+        orgId: flags['org-id'],
+        orgName: flags['org-name'],
+      }),
+    )
 
     this.logVerbose(`Listing members of org ${org.name} on ${config.domain}`, flags.verbose)
 
+    progress.fetchStart('Listing org members', flags.limit)
+
     const {members, total, truncated} = await client.listOrganizationMembers(org.id, {
       limit: flags.limit,
-      onPage: ({page, rawCount, total: pageTotal}) => {
-        this.logVerbose(
+      onPage: this.pageProgressHandler(
+        progress,
+        flags.verbose,
+        ({page, rawCount, total: pageTotal}) =>
           `Page ${page}: ${rawCount} result(s), ${pageTotal} total member(s)`,
-          flags.verbose,
-        )
-      },
+      ),
     })
+
+    progress.fetchStop()
 
     const result: OrganizationMembersResult = {
       members,

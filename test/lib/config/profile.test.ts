@@ -303,6 +303,117 @@ describe('runSetup', () => {
     expect(nock.pendingMocks()).to.have.length(0)
   })
 
+  it('verifies credentials through progress spinner when provided', async () => {
+    const domain = 'tenant.example.com'
+    const spinnerMessages: string[] = []
+
+    nock(`https://${domain}`)
+      .post('/oauth/token')
+      .reply(200, {access_token: 'token', expires_in: 86400, token_type: 'Bearer'})
+
+    await runSetup({
+      check: true,
+      credentials: {
+        clientId: 'cid',
+        clientSecret: 'secret',
+        domain,
+      },
+      force: true,
+      log: (message) => logs.push(message),
+      profileName: 'test',
+      progress: {
+        fetchPage() {},
+        fetchStart() {},
+        fetchStop() {},
+        taskAdvance() {},
+        taskStart() {},
+        taskStop() {},
+        async spinAsync(message, fn, doneMessage) {
+          spinnerMessages.push(message)
+          const result = await fn()
+          if (doneMessage) {
+            spinnerMessages.push(doneMessage)
+          }
+          return result
+        },
+      },
+      targetDir: tempRoot,
+    })
+
+    expect(spinnerMessages).to.deep.equal([
+      'Verifying Auth0 credentials',
+      'Auth0 credentials verified.',
+    ])
+    expect(logs.some((line) => line.includes('Auth0 credentials verified.'))).to.equal(false)
+    expect(nock.pendingMocks()).to.have.length(0)
+  })
+
+  it('cancels setup when overwrite is declined', async () => {
+    writeRepoProfile(tempRoot, 'dev', {
+      AUTH0_DOMAIN: 'old.example.com',
+      AUTH0_MGMT_CLIENT_ID: 'old',
+      AUTH0_MGMT_CLIENT_SECRET: 'old',
+    })
+
+    await runSetup({
+      check: false,
+      confirmOverwrite: async () => false,
+      credentials: {
+        clientId: 'cid',
+        clientSecret: 'secret',
+        domain: 'tenant.example.com',
+      },
+      force: false,
+      log: (message) => logs.push(message),
+      profileName: 'dev',
+      targetDir: tempRoot,
+    })
+
+    expect(logs).to.contain('Setup cancelled.')
+    expect(loadConfigFile(repoProfilePath(tempRoot, 'dev')).AUTH0_DOMAIN).to.equal(
+      'old.example.com',
+    )
+  })
+
+  it('prompts to set default profile when confirm handler is provided', async () => {
+    await runSetup({
+      check: false,
+      confirmSetDefault: async () => true,
+      credentials: {
+        clientId: 'cid',
+        clientSecret: 'secret',
+        domain: 'tenant.example.com',
+      },
+      force: false,
+      log: (message) => logs.push(message),
+      profileName: 'staging',
+      targetDir: tempRoot,
+    })
+
+    expect(readRepoDefaultProfile(tempRoot)).to.equal('staging')
+    expect(logs.some((line) => line.includes('Set default profile'))).to.equal(true)
+  })
+
+  it('skips gitignore message when entry already exists', async () => {
+    writeFileSync(join(tempRoot, '.gitignore'), `${GITIGNORE_ENTRY}\n`, 'utf8')
+
+    await runSetup({
+      check: false,
+      credentials: {
+        clientId: 'cid',
+        clientSecret: 'secret',
+        domain: 'tenant.example.com',
+      },
+      force: false,
+      log: (message) => logs.push(message),
+      profileName: 'dev',
+      targetDir: tempRoot,
+    })
+
+    expect(logs.some((line) => line.includes('Added .wirebound/'))).to.equal(false)
+    expect(logs.some((line) => line.includes('Wrote'))).to.equal(true)
+  })
+
   it('listSetupProfiles formats available profiles', () => {
     writeRepoProfile(tempRoot, 'dev', {
       AUTH0_DOMAIN: 'dev.example.com',

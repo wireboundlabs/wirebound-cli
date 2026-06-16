@@ -3,6 +3,7 @@ import {Flags} from '@oclif/core'
 import {Auth0Client} from '@/lib/auth0/client'
 import {type Auth0User} from '@/lib/auth0/types'
 import {formatHumanResult, type DeleteCommandResult} from '@/lib/output'
+import {type ProgressReporter} from '@/lib/progress'
 import {RateLimiter} from '@/lib/rate-limiter'
 import {Auth0Command} from '@/lib/commands/auth0-command'
 
@@ -10,9 +11,12 @@ async function deleteEligibleUsers(
   client: Auth0Client,
   users: Auth0User[],
   logVerbose: (message: string) => void,
+  progress?: ProgressReporter,
 ): Promise<{deleted: string[]; errors: DeleteCommandResult['errors']}> {
   const deleted: string[] = []
   const errors: DeleteCommandResult['errors'] = []
+
+  progress?.taskStart('Deleting users', users.length)
 
   for (const user of users) {
     try {
@@ -23,7 +27,11 @@ async function deleteEligibleUsers(
       const message = error instanceof Error ? error.message : String(error)
       errors.push({message, user_id: user.user_id})
     }
+
+    progress?.taskAdvance()
   }
+
+  progress?.taskStop()
 
   return {deleted, errors}
 }
@@ -65,15 +73,20 @@ export default class Auth0DeleteGoogleUsers extends Auth0Command {
       flags.verbose,
     )
 
+    const progress = this.createProgress(flags)
+    progress.fetchStart('Finding google-only users', flags.limit)
+
     const {totalRaw, users} = await client.listGoogleOnlyUsers({
       limit: flags.limit,
-      onPage: ({page, rawCount, total}) => {
-        this.logVerbose(
+      onPage: this.pageProgressHandler(
+        progress,
+        flags.verbose,
+        ({page, rawCount, total}) =>
           `Page ${page}: ${rawCount} result(s), ${total} total match(es) in search`,
-          flags.verbose,
-        )
-      },
+      ),
     })
+
+    progress.fetchStop()
 
     const result: DeleteCommandResult = {
       candidates: users.map((user) => ({
@@ -89,8 +102,11 @@ export default class Auth0DeleteGoogleUsers extends Auth0Command {
     }
 
     if (flags.confirm) {
-      const deletion = await deleteEligibleUsers(client, users, (message) =>
-        this.logVerbose(message, flags.verbose),
+      const deletion = await deleteEligibleUsers(
+        client,
+        users,
+        (message) => this.logVerbose(message, flags.verbose),
+        progress,
       )
       result.deleted = deletion.deleted
       result.errors = deletion.errors

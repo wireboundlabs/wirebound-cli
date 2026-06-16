@@ -37,15 +37,20 @@ export default class Auth0UsersDuplicateEmails extends Auth0Command {
 
     this.logVerbose(`Scanning users with emails on ${config.domain}`, flags.verbose)
 
+    const progress = this.createProgress(flags)
+    progress.fetchStart('Scanning users', flags.limit)
+
     const {duplicates, scanned, truncated} = await client.findDuplicateEmails({
       limit: flags.limit,
-      onPage: ({page, rawCount, total}) => {
-        this.logVerbose(
+      onPage: this.pageProgressHandler(
+        progress,
+        flags.verbose,
+        ({page, rawCount, total}) =>
           `Page ${page}: ${rawCount} result(s), ${total} total match(es) in search`,
-          flags.verbose,
-        )
-      },
+      ),
     })
+
+    progress.fetchStop()
 
     const result: DuplicateEmailsResult = {
       duplicateCount: duplicates.length,

@@ -35,15 +35,20 @@ export default class Auth0OrgsList extends Auth0Command {
 
     this.logVerbose(`Listing organizations on ${config.domain}`, flags.verbose)
 
+    const progress = this.createProgress(flags)
+    progress.fetchStart('Listing organizations', flags.limit)
+
     const {organizations, total, truncated} = await client.listOrganizations({
       limit: flags.limit,
-      onPage: ({page, rawCount, total: pageTotal}) => {
-        this.logVerbose(
+      onPage: this.pageProgressHandler(
+        progress,
+        flags.verbose,
+        ({page, rawCount, total: pageTotal}) =>
           `Page ${page}: ${rawCount} result(s), ${pageTotal} total organization(s)`,
-          flags.verbose,
-        )
-      },
+      ),
     })
+
+    progress.fetchStop()
 
     const result: OrganizationListResult = {organizations, total, truncated}
 

@@ -54,12 +54,19 @@ export default class Auth0LogsSearch extends Auth0Command {
 
     this.logVerbose(`Searching logs on ${config.domain}`, flags.verbose)
 
+    const progress = this.createProgress(flags)
+    progress.fetchStart('Searching logs', flags.limit)
+
     const {logs, truncated} = await client.searchLogs(query, {
       limit: flags.limit,
-      onPage: ({page, rawCount}) => {
-        this.logVerbose(`Page ${page}: ${rawCount} log(s)`, flags.verbose)
-      },
+      onPage: this.pageProgressHandler(
+        progress,
+        flags.verbose,
+        ({page, rawCount}) => `Page ${page}: ${rawCount} log(s)`,
+      ),
     })
+
+    progress.fetchStop()
 
     const result: LogSearchResult = {
       logs,

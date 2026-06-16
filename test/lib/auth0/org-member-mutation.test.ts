@@ -89,6 +89,60 @@ describe('runOrgMemberMutation', () => {
     expect(nock.pendingMocks()).to.have.length(0)
   })
 
+  it('uses progress hooks when a reporter is provided', async () => {
+    mockToken()
+    nock(BASE).get('/api/v2/organizations/name/acme-corp').reply(200, sampleOrg)
+    nock(BASE)
+      .get('/api/v2/users-by-email')
+      .query({email: 'member@example.com'})
+      .reply(200, [sampleMember])
+    nock(BASE)
+      .get('/api/v2/organizations/org_1/members')
+      .query(true)
+      .reply(200, {length: 0, limit: 100, members: [], start: 0, total: 0})
+
+    const progressEvents: string[] = []
+    const progress = {
+      fetchPage() {
+        progressEvents.push('fetchPage')
+      },
+      fetchStart(label: string) {
+        progressEvents.push(`fetchStart:${label}`)
+      },
+      fetchStop() {
+        progressEvents.push('fetchStop')
+      },
+      taskAdvance() {
+        progressEvents.push('taskAdvance')
+      },
+      taskStart(label: string) {
+        progressEvents.push(`taskStart:${label}`)
+      },
+      taskStop() {
+        progressEvents.push('taskStop')
+      },
+      async spinAsync<T>(message: string, fn: () => Promise<T>) {
+        progressEvents.push(`spin:${message}`)
+        return fn()
+      },
+    }
+
+    const client = new Auth0Client(config, new RateLimiter({rps: 10}))
+    await runOrgMemberMutation(client, {
+      action: 'add',
+      confirm: false,
+      email: 'member@example.com',
+      logVerbose: () => {},
+      orgName: 'acme-corp',
+      progress,
+    })
+
+    expect(progressEvents[0]).to.equal('spin:Resolving organization')
+    expect(progressEvents).to.include('fetchStart:Finding users')
+    expect(progressEvents).to.include('fetchStart:Loading org members')
+    expect(nock.pendingMocks()).to.have.length(0)
+  })
+
   it('records errors when confirm add fails', async () => {
     mockToken()
     nock(BASE).get('/api/v2/organizations/name/acme-corp').reply(200, sampleOrg)

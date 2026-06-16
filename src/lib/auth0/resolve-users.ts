@@ -6,7 +6,7 @@ export interface ResolveUsersOptions {
   id?: string
   query?: string
   limit?: number
-  onPage?: (info: {page: number; total: number; rawCount: number}) => void
+  onPage?: (info: {collected: number; page: number; total: number; rawCount: number}) => void
 }
 
 export async function resolveUsers(

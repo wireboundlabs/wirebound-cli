@@ -18,32 +18,32 @@ import {
 
 export interface ListGoogleOnlyUsersOptions {
   limit?: number
-  onPage?: (info: {page: number; total: number; rawCount: number}) => void
+  onPage?: (info: {collected: number; page: number; total: number; rawCount: number}) => void
 }
 
 export interface SearchUsersOptions {
   limit?: number
-  onPage?: (info: {page: number; total: number; rawCount: number}) => void
+  onPage?: (info: {collected: number; page: number; total: number; rawCount: number}) => void
 }
 
 export interface SearchLogsOptions {
   limit?: number
-  onPage?: (info: {page: number; total: number; rawCount: number}) => void
+  onPage?: (info: {collected: number; page: number; total: number; rawCount: number}) => void
 }
 
 export interface ListOrganizationsOptions {
   limit?: number
-  onPage?: (info: {page: number; total: number; rawCount: number}) => void
+  onPage?: (info: {collected: number; page: number; total: number; rawCount: number}) => void
 }
 
 export interface ListOrganizationMembersOptions {
   limit?: number
-  onPage?: (info: {page: number; total: number; rawCount: number}) => void
+  onPage?: (info: {collected: number; page: number; total: number; rawCount: number}) => void
 }
 
 export interface FindDuplicateEmailsOptions {
   limit?: number
-  onPage?: (info: {page: number; total: number; rawCount: number}) => void
+  onPage?: (info: {collected: number; page: number; total: number; rawCount: number}) => void
 }
 
 export class Auth0Client {
@@ -139,13 +139,19 @@ export class Auth0Client {
         perPage,
       )
       totalRaw += data.users.length
-      options.onPage?.({page, rawCount: data.users.length, total: data.total})
 
       for (const user of data.users) {
         if (!isGoogleOnlyUser(user)) continue
         if (options.limit !== undefined && eligible.length >= options.limit) break
         eligible.push(user)
       }
+
+      options.onPage?.({
+        collected: eligible.length,
+        page,
+        rawCount: data.users.length,
+        total: data.total,
+      })
 
       const hitLimit = options.limit !== undefined && eligible.length >= options.limit
       const lastPage =
@@ -205,13 +211,19 @@ export class Auth0Client {
 
     while (true) {
       const batch = await this.fetchLogsPage(query, page, perPage)
-      options.onPage?.({page, rawCount: batch.length, total: batch.length})
 
       const remaining =
         options.limit === undefined
           ? batch.length
           : Math.max(0, options.limit - logs.length)
       logs.push(...batch.slice(0, remaining))
+
+      options.onPage?.({
+        collected: logs.length,
+        page,
+        rawCount: batch.length,
+        total: logs.length,
+      })
 
       if (options.limit !== undefined && logs.length >= options.limit) {
         truncated = batch.length === perPage

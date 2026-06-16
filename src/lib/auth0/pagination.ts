@@ -10,7 +10,7 @@ export interface PaginatedPage<T> {
 export interface PaginateOptions<T> {
   perPage?: number
   limit?: number
-  onPage?: (info: {page: number; total: number; rawCount: number}) => void
+  onPage?: (info: {page: number; total: number; rawCount: number; collected: number}) => void
   fetchPage: (page: number, perPage: number) => Promise<PaginatedPage<T>>
 }
 
@@ -43,13 +43,19 @@ export async function paginate<T>(options: PaginateOptions<T>): Promise<Paginate
   for (page = 0; ; page += 1) {
     const data = await options.fetchPage(page, perPage)
     total = data.total
-    options.onPage?.({page, rawCount: data.items.length, total: data.total})
 
     const remaining =
       options.limit === undefined
         ? data.items.length
         : Math.max(0, options.limit - collected.length)
     collected.push(...data.items.slice(0, remaining))
+
+    options.onPage?.({
+      collected: collected.length,
+      page,
+      rawCount: data.items.length,
+      total: data.total,
+    })
 
     if (options.limit !== undefined && collected.length >= options.limit) {
       break

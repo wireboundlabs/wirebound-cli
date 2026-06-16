@@ -14,6 +14,7 @@ import {
   writeRepoProfile,
 } from '@/lib/config/profile'
 import {verifyAuth0Credentials} from '@/lib/config/verify-auth0'
+import {type ProgressReporter} from '@/lib/progress'
 
 export interface Auth0Credentials {
   domain: string
@@ -31,6 +32,7 @@ export interface RunSetupOptions {
   confirmOverwrite?: (configPath: string) => Promise<boolean>
   confirmSetDefault?: (profileName: string, targetDir: string) => Promise<boolean>
   log: (message: string) => void
+  progress?: ProgressReporter
 }
 
 export function listSetupProfiles(targetDir: string): string {
@@ -137,8 +139,16 @@ export async function runSetup(options: RunSetupOptions): Promise<void> {
   }
 
   if (options.check) {
-    await verifySetupCredentials(options.credentials)
-    options.log('Auth0 credentials verified.')
+    if (options.progress) {
+      await options.progress.spinAsync(
+        'Verifying Auth0 credentials',
+        () => verifySetupCredentials(options.credentials),
+        'Auth0 credentials verified.',
+      )
+    } else {
+      await verifySetupCredentials(options.credentials)
+      options.log('Auth0 credentials verified.')
+    }
   }
 
   logNextSteps(options.log, options.profileName, shouldSetDefault)
