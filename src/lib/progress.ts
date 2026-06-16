@@ -10,6 +10,21 @@ export interface PageProgressInfo {
   total: number
 }
 
+export function computeFetchProgressTotal(
+  info: PageProgressInfo,
+  fetchLimit?: number,
+  maxResults = AUTH0_SEARCH_MAX_RESULTS,
+): {total: number; value: number} {
+  const cappedTotal = Math.min(info.total, maxResults)
+  const total =
+    fetchLimit === undefined ? cappedTotal : Math.min(fetchLimit, cappedTotal)
+
+  return {
+    total: Math.max(total, 1),
+    value: Math.min(info.collected, total),
+  }
+}
+
 export interface ProgressContext {
   enabled: boolean
 }
@@ -78,17 +93,13 @@ class TerminalProgressReporter implements ProgressReporter {
       return
     }
 
-    const cappedTotal = Math.min(info.total, AUTH0_SEARCH_MAX_RESULTS)
-    const total =
-      this.fetchLimit === undefined
-        ? cappedTotal
-        : Math.min(this.fetchLimit, cappedTotal)
+    const {total, value} = computeFetchProgressTotal(info, this.fetchLimit)
 
     if (this.bar.getTotal() !== total) {
-      this.bar.setTotal(Math.max(total, 1))
+      this.bar.setTotal(total)
     }
 
-    this.bar.update(Math.min(info.collected, total))
+    this.bar.update(value)
   }
 
   fetchStop(): void {

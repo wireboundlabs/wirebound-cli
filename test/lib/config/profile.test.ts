@@ -14,9 +14,12 @@ import {
   GITIGNORE_ENTRY,
   listRepoProfiles,
   loadConfigFile,
+  normalizeAuth0Domain,
+  normalizeProfileName,
   readRepoDefaultProfile,
   repoProfilePath,
   resolveProfileVars,
+  validateProfileName,
   writeRepoDefaultProfile,
   writeRepoProfile,
 } from '@/lib/config/profile'
@@ -191,6 +194,83 @@ describe('config profile', () => {
     writeFileSync(legacyPath, 'AUTH0_DOMAIN=legacy.example.com\n', 'utf8')
 
     expect(findRepoConfig(tempRoot)).to.equal(legacyPath)
+  })
+
+  it('validateProfileName rejects empty and invalid names', () => {
+    expect(validateProfileName('')).to.equal('Profile name is required')
+    expect(validateProfileName('  ')).to.equal('Profile name is required')
+    expect(validateProfileName('../bad')).to.contain('letters, numbers')
+    expect(validateProfileName('dev')).to.equal(true)
+  })
+
+  it('normalizeProfileName trims whitespace', () => {
+    expect(normalizeProfileName('  dev  ')).to.equal('dev')
+  })
+
+  it('normalizeAuth0Domain strips protocol and trailing slash', () => {
+    expect(normalizeAuth0Domain(' https://tenant.example.com/ ')).to.equal('tenant.example.com')
+  })
+
+  it('formatProfileList handles empty profile lists', () => {
+    expect(formatProfileList([])).to.contain('No repo profiles found')
+  })
+
+  it('listRepoProfiles returns empty when repo root is missing', () => {
+    expect(listRepoProfiles(join(tempRoot, 'missing'))).to.deep.equal([])
+  })
+
+  it('readRepoDefaultProfile ignores blank default file', () => {
+    const defaultDir = join(tempRoot, '.wirebound')
+    mkdirSync(defaultDir, {recursive: true})
+    writeFileSync(join(defaultDir, 'default'), '   \n', 'utf8')
+
+    expect(readRepoDefaultProfile(tempRoot)).to.equal(undefined)
+  })
+
+  it('resolveProfileVars throws when named profile is missing', () => {
+    process.chdir(tempRoot)
+
+    try {
+      resolveProfileVars('missing')
+      expect.fail('Expected resolveProfileVars to throw')
+    } catch (error) {
+      expect(String(error)).to.contain('Profile not found: missing')
+      expect(String(error)).to.contain('wirebound setup --profile missing')
+    }
+  })
+
+  it('resolveProfileVars skips missing default profile files', () => {
+    writeRepoDefaultProfile(tempRoot, 'missing')
+    process.chdir(tempRoot)
+
+    expect(resolveProfileVars()).to.equal(undefined)
+  })
+
+  it('formatConfigFile renders legacy header without profile name', () => {
+    expect(formatConfigFile({AUTH0_DOMAIN: 'tenant.example.com'})).to.contain(
+      'repo-local config (do not commit)',
+    )
+  })
+
+  it('ensureGitignore returns false when gitignore is missing', () => {
+    expect(ensureGitignore(tempRoot)).to.equal(false)
+  })
+
+  it('ensureGitignore returns false when entry already exists', () => {
+    const gitignorePath = join(tempRoot, '.gitignore')
+    writeFileSync(gitignorePath, '.wirebound\n', 'utf8')
+
+    expect(ensureGitignore(tempRoot)).to.equal(false)
+    writeFileSync(gitignorePath, '.wirebound/**\n', 'utf8')
+    expect(ensureGitignore(tempRoot)).to.equal(false)
+  })
+
+  it('ensureGitignore appends entry without trailing newline in gitignore', () => {
+    const gitignorePath = join(tempRoot, '.gitignore')
+    writeFileSync(gitignorePath, 'node_modules', 'utf8')
+
+    expect(ensureGitignore(tempRoot)).to.equal(true)
+    expect(readFileSync(gitignorePath, 'utf8')).to.contain(`${GITIGNORE_ENTRY}\n`)
   })
 })
 
@@ -375,6 +455,32 @@ describe('runSetup', () => {
     )
   })
 
+  it('overwrites existing profile when confirm handler approves', async () => {
+    writeRepoProfile(tempRoot, 'dev', {
+      AUTH0_DOMAIN: 'old.example.com',
+      AUTH0_MGMT_CLIENT_ID: 'old',
+      AUTH0_MGMT_CLIENT_SECRET: 'old',
+    })
+
+    await runSetup({
+      check: false,
+      confirmOverwrite: async () => true,
+      credentials: {
+        clientId: 'cid',
+        clientSecret: 'secret',
+        domain: 'tenant.example.com',
+      },
+      force: false,
+      log: (message) => logs.push(message),
+      profileName: 'dev',
+      targetDir: tempRoot,
+    })
+
+    expect(loadConfigFile(repoProfilePath(tempRoot, 'dev')).AUTH0_DOMAIN).to.equal(
+      'tenant.example.com',
+    )
+  })
+
   it('prompts to set default profile when confirm handler is provided', async () => {
     await runSetup({
       check: false,
@@ -428,5 +534,64 @@ describe('runSetup', () => {
     writeRepoDefaultProfile(tempRoot, 'dev')
 
     expect(listSetupProfiles(tempRoot)).to.equal('  dev (default)\n  test')
+  })
+
+  it('logs export hint when default profile is not set', async () => {
+    await runSetup({
+      check: false,
+      credentials: {
+        clientId: 'cid',
+        clientSecret: 'secret',
+        domain: 'tenant.example.com',
+      },
+      force: false,
+      log: (message) => logs.push(message),
+      profileName: 'staging',
+      setDefault: false,
+      targetDir: tempRoot,
+    })
+
+    expect(logs.some((line) => line.includes('export WIREBOUND_PROFILE=staging'))).to.equal(true)
+  })
+
+  it('logs default-profile hint when default is set', async () => {
+    await runSetup({
+      check: false,
+      credentials: {
+        clientId: 'cid',
+        clientSecret: 'secret',
+        domain: 'tenant.example.com',
+      },
+      force: false,
+      log: (message) => logs.push(message),
+      profileName: 'production',
+      setDefault: true,
+      targetDir: tempRoot,
+    })
+
+    expect(logs.some((line) => line.includes('uses default profile'))).to.equal(true)
+  })
+
+  it('wraps credential verification failures in CLIError', async () => {
+    nock('https://tenant.example.com').post('/oauth/token').reply(401, 'invalid_client')
+
+    try {
+      await runSetup({
+        check: true,
+        credentials: {
+          clientId: 'bad',
+          clientSecret: 'bad',
+          domain: 'tenant.example.com',
+        },
+        force: true,
+        log: (message) => logs.push(message),
+        profileName: 'test',
+        targetDir: tempRoot,
+      })
+      expect.fail('Expected runSetup to throw')
+    } catch (error) {
+      expect(String(error)).to.contain('Credential check failed')
+      expect(String(error)).to.contain('401')
+    }
   })
 })

@@ -52,4 +52,35 @@ describe('paginate', () => {
     expect(result.items).to.have.length(1000)
     expect(result.truncated).to.equal(true)
   })
+
+  it('stops when a page returns no items', async () => {
+    const result = await paginate({
+      fetchPage: async (page) => ({
+        items: page === 0 ? ['only-item'] : [],
+        page,
+        perPage: 1,
+        total: 1,
+      }),
+    })
+
+    expect(result.items).to.deep.equal(['only-item'])
+  })
+
+  it('invokes onPage for each fetched page', async () => {
+    const pages: number[] = []
+
+    await paginate({
+      fetchPage: async (page) => ({
+        items: [`item-${page}`],
+        page,
+        perPage: 1,
+        total: 2,
+      }),
+      onPage: ({page}) => {
+        pages.push(page)
+      },
+    })
+
+    expect(pages).to.deep.equal([0, 1])
+  })
 })

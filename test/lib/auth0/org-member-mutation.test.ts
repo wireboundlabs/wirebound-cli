@@ -143,6 +143,56 @@ describe('runOrgMemberMutation', () => {
     expect(nock.pendingMocks()).to.have.length(0)
   })
 
+  it('adds eligible members when confirmed with progress', async () => {
+    mockToken()
+    nock(BASE).get('/api/v2/organizations/name/acme-corp').reply(200, sampleOrg)
+    nock(BASE)
+      .get('/api/v2/users-by-email')
+      .query({email: 'member@example.com'})
+      .reply(200, [sampleMember])
+    nock(BASE)
+      .get('/api/v2/organizations/org_1/members')
+      .query(true)
+      .reply(200, {length: 0, limit: 100, members: [], start: 0, total: 0})
+    nock(BASE)
+      .post('/api/v2/organizations/org_1/members', {members: ['auth0|1']})
+      .reply(204)
+
+    const progressEvents: string[] = []
+    const progress = {
+      fetchPage() {},
+      fetchStart() {},
+      fetchStop() {},
+      taskAdvance() {
+        progressEvents.push('taskAdvance')
+      },
+      taskStart(label: string) {
+        progressEvents.push(`taskStart:${label}`)
+      },
+      taskStop() {
+        progressEvents.push('taskStop')
+      },
+      async spinAsync<T>(_message: string, fn: () => Promise<T>) {
+        return fn()
+      },
+    }
+
+    const client = new Auth0Client(config, new RateLimiter({rps: 10}))
+    const result = await runOrgMemberMutation(client, {
+      action: 'add',
+      confirm: true,
+      email: 'member@example.com',
+      logVerbose: () => {},
+      orgName: 'acme-corp',
+      progress,
+    })
+
+    expect(result.updated).to.deep.equal(['auth0|1'])
+    expect(progressEvents).to.include('taskStart:Adding org members')
+    expect(progressEvents).to.include('taskAdvance')
+    expect(nock.pendingMocks()).to.have.length(0)
+  })
+
   it('records errors when confirm add fails', async () => {
     mockToken()
     nock(BASE).get('/api/v2/organizations/name/acme-corp').reply(200, sampleOrg)
@@ -170,6 +220,75 @@ describe('runOrgMemberMutation', () => {
 
     expect(result.errors).to.have.length(1)
     expect(result.errors[0].user_id).to.equal('auth0|1')
+    expect(nock.pendingMocks()).to.have.length(0)
+  })
+
+  it('removes eligible members when confirmed', async () => {
+    mockToken()
+    nock(BASE).get('/api/v2/organizations/org_1').reply(200, sampleOrg)
+    nock(BASE)
+      .get('/api/v2/users-by-email')
+      .query({email: 'member@example.com'})
+      .reply(200, [sampleMember])
+    nock(BASE)
+      .get('/api/v2/organizations/org_1/members')
+      .query(true)
+      .reply(200, {
+        length: 1,
+        limit: 100,
+        members: [sampleMember],
+        start: 0,
+        total: 1,
+      })
+    nock(BASE)
+      .delete('/api/v2/organizations/org_1/members', {members: ['auth0|1']})
+      .reply(204)
+
+    const client = new Auth0Client(config, new RateLimiter({rps: 10}))
+    const logs: string[] = []
+    const result = await runOrgMemberMutation(client, {
+      action: 'remove',
+      confirm: true,
+      email: 'member@example.com',
+      logVerbose: (message) => logs.push(message),
+      orgId: 'org_1',
+    })
+
+    expect(result.updated).to.deep.equal(['auth0|1'])
+    expect(logs.some((line) => line.includes('Removed auth0|1 from org acme-corp'))).to.equal(true)
+    expect(nock.pendingMocks()).to.have.length(0)
+  })
+
+  it('resolves organization without progress hooks', async () => {
+    mockToken()
+    nock(BASE).get('/api/v2/organizations/org_1').reply(200, sampleOrg)
+    nock(BASE)
+      .get('/api/v2/users')
+      .query(true)
+      .reply(200, {
+        length: 1,
+        limit: 100,
+        start: 0,
+        total: 1,
+        users: [sampleMember],
+      })
+    nock(BASE)
+      .get('/api/v2/organizations/org_1/members')
+      .query(true)
+      .reply(200, {length: 0, limit: 100, members: [], start: 0, total: 0})
+
+    const client = new Auth0Client(config, new RateLimiter({rps: 10}))
+    const verboseLogs: string[] = []
+    const result = await runOrgMemberMutation(client, {
+      action: 'add',
+      confirm: false,
+      logVerbose: (message) => verboseLogs.push(message),
+      orgId: 'org_1',
+      query: 'email:member@example.com',
+    })
+
+    expect(result.candidates).to.have.length(1)
+    expect(verboseLogs.some((line) => line.includes('Page 0:'))).to.equal(true)
     expect(nock.pendingMocks()).to.have.length(0)
   })
 })

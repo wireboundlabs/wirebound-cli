@@ -31,6 +31,8 @@ describe('resolveOrganization', () => {
     expect(() => validateOrgFlags({orgId: 'org_1', orgName: 'acme'})).to.throw(
       'Only one of --org-id or --org-name may be specified',
     )
+    expect(() => validateOrgFlags({orgId: 'org_1'})).to.not.throw()
+    expect(() => validateOrgFlags({orgName: 'acme'})).to.not.throw()
   })
 
   it('resolveOrganization fetches by org id', async () => {

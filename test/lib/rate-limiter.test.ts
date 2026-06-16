@@ -48,4 +48,81 @@ describe('RateLimiter', () => {
       expect((error as HttpError).status).to.equal(500)
     }
   })
+
+  it('uses default Auth0 retry delay for 429 responses', async () => {
+    let attempts = 0
+
+    const limiter = new RateLimiter({maxRetries: 2, rps: 100})
+
+    const result = await limiter.schedule(async () => {
+      attempts += 1
+      if (attempts === 1) {
+        throw new HttpError(
+          429,
+          new Headers({'x-ratelimit-reset': `${Math.floor(Date.now() / 1000) + 1}`}),
+          'rate limited',
+        )
+      }
+      return 'ok'
+    })
+
+    expect(result).to.equal('ok')
+    expect(attempts).to.equal(2)
+  })
+
+  it('falls back to 1000ms when rate limit reset header is missing', async () => {
+    let attempts = 0
+
+    const limiter = new RateLimiter({maxRetries: 2, rps: 100})
+
+    const result = await limiter.schedule(async () => {
+      attempts += 1
+      if (attempts === 1) {
+        throw new HttpError(429, new Headers(), 'rate limited')
+      }
+      return 'ok'
+    })
+
+    expect(result).to.equal('ok')
+    expect(attempts).to.equal(2)
+  })
+
+  it('stops retrying after maxRetries is exceeded', async () => {
+    const limiter = new RateLimiter({
+      getRetryDelayMs: () => 1,
+      maxRetries: 1,
+      rps: 100,
+    })
+
+    try {
+      await limiter.schedule(async () => {
+        throw new HttpError(429, new Headers(), 'rate limited')
+      })
+      expect.fail('expected schedule to throw')
+    } catch (error) {
+      expect(error).to.be.instanceOf(HttpError)
+      expect((error as HttpError).status).to.equal(429)
+    }
+  })
+
+  it('ignores invalid rate limit reset headers', async () => {
+    let attempts = 0
+
+    const limiter = new RateLimiter({maxRetries: 2, rps: 100})
+
+    const result = await limiter.schedule(async () => {
+      attempts += 1
+      if (attempts === 1) {
+        throw new HttpError(
+          429,
+          new Headers({'x-ratelimit-reset': 'not-a-number'}),
+          'rate limited',
+        )
+      }
+      return 'ok'
+    })
+
+    expect(result).to.equal('ok')
+    expect(attempts).to.equal(2)
+  })
 })

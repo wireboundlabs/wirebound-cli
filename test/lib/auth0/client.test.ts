@@ -176,6 +176,19 @@ describe('Auth0Client', () => {
     expect(nock.pendingMocks()).to.have.length(0)
   })
 
+  it('getOrganizationByName fetches a single organization', async () => {
+    mockToken()
+    nock(BASE)
+      .get('/api/v2/organizations/name/acme-corp')
+      .reply(200, {id: 'org_1', name: 'acme-corp'})
+
+    const client = new Auth0Client(config, new RateLimiter({rps: 10}))
+    const org = await client.getOrganizationByName('acme-corp')
+
+    expect(org.id).to.equal('org_1')
+    expect(nock.pendingMocks()).to.have.length(0)
+  })
+
   it('listOrganizationMembers returns paginated members', async () => {
     mockToken()
     nock(BASE)

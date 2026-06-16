@@ -41,4 +41,13 @@ describe('groupUsersByEmail', () => {
     expect(groups).to.have.length(1)
     expect(groups[0].email).to.equal('a@example.com')
   })
+
+  it('returns no groups when each email appears only once', () => {
+    expect(
+      groupUsersByEmail([
+        {email: 'solo@example.com', user_id: 'auth0|1'},
+        {email: 'other@example.com', user_id: 'auth0|2'},
+      ]),
+    ).to.deep.equal([])
+  })
 })
