@@ -1,6 +1,7 @@
 import {type Auth0Config} from '@/lib/config/auth0'
+import {type Auth0EndpointKey} from '@/lib/auth0/rate-limit-policy'
+import {type Auth0RateLimiter} from '@/lib/auth0/auth0-rate-limiter'
 import {assertOk} from '@/lib/http-error'
-import {RateLimiter} from '@/lib/rate-limiter'
 import {groupUsersByEmail, type DuplicateEmailGroup} from './duplicate-emails'
 import {isGoogleOnlyUser} from './filters'
 import {paginate} from './pagination'
@@ -51,7 +52,7 @@ export class Auth0Client {
 
   constructor(
     private readonly config: Auth0Config,
-    private readonly limiter: RateLimiter,
+    private readonly limiter: Auth0RateLimiter,
   ) {}
 
   private get baseUrl(): string {
@@ -71,8 +72,12 @@ export class Auth0Client {
     return assertOk(response)
   }
 
-  private async fetch(path: string, init?: RequestInit): Promise<Response> {
-    return this.limiter.schedule(() => this.fetchOnce(path, init ?? {}))
+  private async fetch(
+    endpointKey: Auth0EndpointKey,
+    path: string,
+    init?: RequestInit,
+  ): Promise<Response> {
+    return this.limiter.schedule(endpointKey, () => this.fetchOnce(path, init ?? {}))
   }
 
   private async withAuth(init: RequestInit): Promise<RequestInit> {
@@ -93,7 +98,7 @@ export class Auth0Client {
       grant_type: 'client_credentials',
     }
 
-    const response = await this.limiter.schedule(async () => {
+    const response = await this.limiter.schedule('oauth-token', async () => {
       const res = await fetch(`${this.baseUrl}/oauth/token`, {
         body: JSON.stringify(body),
         headers: {'Content-Type': 'application/json'},
@@ -173,6 +178,7 @@ export class Auth0Client {
   async getUserById(userId: string): Promise<Auth0User> {
     const encodedId = encodeURIComponent(userId)
     const response = await this.fetch(
+      'read-users',
       `/api/v2/users/${encodedId}`,
       await this.withAuth({method: 'GET'}),
     )
@@ -183,6 +189,7 @@ export class Auth0Client {
   async getUsersByEmail(email: string): Promise<Auth0User[]> {
     const params = new URLSearchParams({email})
     const response = await this.fetch(
+      'read-users-by-email',
       `/api/v2/users-by-email?${params.toString()}`,
       await this.withAuth({method: 'GET'}),
     )
@@ -193,6 +200,7 @@ export class Auth0Client {
   async updateUser(userId: string, patch: Auth0UserUpdate): Promise<Auth0User> {
     const encodedId = encodeURIComponent(userId)
     const response = await this.fetch(
+      'write-users',
       `/api/v2/users/${encodedId}`,
       await this.withAuth({body: JSON.stringify(patch), method: 'PATCH'}),
     )
@@ -240,6 +248,7 @@ export class Auth0Client {
   async deleteUser(userId: string): Promise<void> {
     const encodedId = encodeURIComponent(userId)
     await this.fetch(
+      'write-users',
       `/api/v2/users/${encodedId}`,
       await this.withAuth({method: 'DELETE'}),
     )
@@ -280,6 +289,7 @@ export class Auth0Client {
   async getOrganizationById(orgId: string): Promise<Auth0Organization> {
     const encodedId = encodeURIComponent(orgId)
     const response = await this.fetch(
+      'read-organizations-by-id',
       `/api/v2/organizations/${encodedId}`,
       await this.withAuth({method: 'GET'}),
     )
@@ -290,6 +300,7 @@ export class Auth0Client {
   async getOrganizationByName(name: string): Promise<Auth0Organization> {
     const encodedName = encodeURIComponent(name)
     const response = await this.fetch(
+      'read-organizations-by-name',
       `/api/v2/organizations/name/${encodedName}`,
       await this.withAuth({method: 'GET'}),
     )
@@ -325,6 +336,7 @@ export class Auth0Client {
   async addOrganizationMembers(orgId: string, memberIds: string[]): Promise<void> {
     const encodedId = encodeURIComponent(orgId)
     await this.fetch(
+      'write-organization-members',
       `/api/v2/organizations/${encodedId}/members`,
       await this.withAuth({
         body: JSON.stringify({members: memberIds}),
@@ -336,6 +348,7 @@ export class Auth0Client {
   async removeOrganizationMembers(orgId: string, memberIds: string[]): Promise<void> {
     const encodedId = encodeURIComponent(orgId)
     await this.fetch(
+      'write-organization-members',
       `/api/v2/organizations/${encodedId}/members`,
       await this.withAuth({
         body: JSON.stringify({members: memberIds}),
@@ -355,6 +368,7 @@ export class Auth0Client {
     })
 
     const response = await this.fetch(
+      'read-organizations',
       `/api/v2/organizations?${params.toString()}`,
       await this.withAuth({method: 'GET'}),
     )
@@ -375,6 +389,7 @@ export class Auth0Client {
     })
 
     const response = await this.fetch(
+      'read-organization-members',
       `/api/v2/organizations/${encodedId}/members?${params.toString()}`,
       await this.withAuth({method: 'GET'}),
     )
@@ -396,6 +411,7 @@ export class Auth0Client {
     })
 
     const response = await this.fetch(
+      'read-users',
       `/api/v2/users?${params.toString()}`,
       await this.withAuth({method: 'GET'}),
     )
@@ -419,6 +435,7 @@ export class Auth0Client {
     }
 
     const response = await this.fetch(
+      'read-logs',
       `/api/v2/logs?${params.toString()}`,
       await this.withAuth({method: 'GET'}),
     )

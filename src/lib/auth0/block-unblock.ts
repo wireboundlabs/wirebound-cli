@@ -1,10 +1,10 @@
 import {Flags} from '@oclif/core'
 
 import {Auth0Command} from '@/lib/commands/auth0-command'
+import {type Auth0Config, formatRateLimitSummary} from '@/lib/config/auth0'
+import {createAuth0Client} from '@/lib/auth0/create-client'
 import {formatUserMutationResult} from '@/lib/output'
 import {type ProgressReporter} from '@/lib/progress'
-import {RateLimiter} from '@/lib/rate-limiter'
-import {Auth0Client} from './client'
 import {runUserBlockMutation} from './user-mutation'
 
 const targetFlags = {
@@ -62,17 +62,20 @@ export async function runBlockUnblockCommand(
       rps?: number
       profile?: string
       verbose?: boolean
-    }) => Promise<{domain: string; rps: number; clientId: string; clientSecret: string}>
+    }) => Promise<Auth0Config>
     progress?: ProgressReporter
   },
 ): Promise<void> {
-  const config = await options.resolveConfig(options.flags)
+    const config = await options.resolveConfig(options.flags)
 
-  const limiter = new RateLimiter({
-    onRetry: (message) => host.logVerbose(message, options.flags.verbose ?? false),
-    rps: config.rps,
-  })
-  const client = new Auth0Client(config, limiter)
+    const client = createAuth0Client(config, {
+      onRetry: (message) => host.logVerbose(message, options.flags.verbose ?? false),
+    })
+
+    if (options.flags.verbose) {
+      host.logVerbose(`Auth0 tenant: ${config.domain}`, true)
+      host.logVerbose(`Rate limits: ${formatRateLimitSummary(config)}`, true)
+    }
 
   const result = await runUserBlockMutation(client, {
     blocked: options.blocked,

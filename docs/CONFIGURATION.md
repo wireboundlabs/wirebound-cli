@@ -99,6 +99,10 @@ Example `.wirebound/profiles/dev.env`:
 AUTH0_DOMAIN=dev-tenant.us.auth0.com
 AUTH0_MGMT_CLIENT_ID=abcdefghijklmnopqrstuvwxyz1234
 AUTH0_MGMT_CLIENT_SECRET=your-secret-here-use-the-auth0-dashboard-value
+
+# Optional — only for paid Auth0 plans (see Rate limits below)
+# AUTH0_PLAN=essentials-professional
+# AUTH0_TENANT_ENV=production
 ```
 
 ### Legacy single-file config
@@ -170,6 +174,9 @@ Oclif also reads these when resolving `--domain`, `--client-id`, and `--client-s
 | `AUTH0_DOMAIN` | Yes | Tenant domain, **without** `https://` (e.g. `acme.us.auth0.com`) |
 | `AUTH0_MGMT_CLIENT_ID` | Yes | Machine-to-Machine application Client ID |
 | `AUTH0_MGMT_CLIENT_SECRET` | Yes | M2M Client Secret (shown once when created — save it) |
+| `AUTH0_PLAN` | No | Subscription plan for rate limits: `free` (default), `essentials-professional`, or `enterprise` |
+| `AUTH0_TENANT_ENV` | No | Tenant environment for Enterprise: `production` (default) or `non-production` |
+| `AUTH0_RPS` | No | Override global Management API requests per second (endpoint limits still apply) |
 | `WIREBOUND_PROFILE` | No | Default global profile name (same as `--profile`) |
 
 ---
@@ -178,14 +185,33 @@ Oclif also reads these when resolving `--domain`, `--client-id`, and `--client-s
 
 For each Auth0 setting, **later steps override earlier ones**:
 
-1. Built-in defaults (e.g. `--rps` defaults to `2`)
+1. Built-in defaults (e.g. `AUTH0_PLAN=free`, global **2 req/s** for Free tenants)
 2. **Legacy repo config** (`.wirebound/config.env`, when no profile is selected)
 3. **Default repo profile** (`.wirebound/default` → `.wirebound/profiles/<name>.env`)
 4. **Named profile** (`--profile` or `$WIREBOUND_PROFILE` — repo-local first, then global)
 5. **Process environment** (`export AUTH0_*=...`)
-6. **CLI flags** (`--domain`, `--client-id`, `--client-secret`)
+6. **CLI flags** (`--domain`, `--client-id`, `--client-secret`, `--auth0-plan`, `--auth0-tenant-env`, `--rps`)
 
 Example: repo config sets `AUTH0_DOMAIN=prod.auth0.com`, but you pass `--domain staging.auth0.com` → **staging** is used.
+
+---
+
+## Rate limits
+
+wirebound queues Auth0 Management API calls to match [Auth0’s documented limits](https://auth0.com/docs/troubleshoot/customer-support/operational-policies/rate-limit-policy). **Free tenants need no configuration** (defaults to 2 req/s). Set your plan once if you hit HTTP 429 on a paid tenant:
+
+| Your Auth0 subscription | Set in profile |
+|-------------------------|----------------|
+| Free or trial | *(nothing — default)* |
+| Essentials or Professional | `AUTH0_PLAN=essentials-professional` |
+| Enterprise (production) | `AUTH0_PLAN=enterprise` |
+| Enterprise (dev / staging) | `AUTH0_PLAN=enterprise` and `AUTH0_TENANT_ENV=non-production` |
+
+Optional: `AUTH0_RPS` or `--rps` lowers the global rate further. Per-endpoint limits still apply on paid plans.
+
+Use `--verbose` to see the resolved tenant and rate-limit settings on each command. HTTP 429 responses are retried automatically.
+
+Full details: [Auth0 vendor guide — Rate limits](vendors/auth0.md#rate-limits).
 
 ---
 
@@ -285,7 +311,7 @@ Always **dry-run in CI first**; add `--confirm` only when the pipeline is truste
 | Config ignored in subdirectory | No `.wirebound/config.env` in parent tree | Run setup at repo root |
 | `HTTP 401` | Wrong client secret or ID | Regenerate secret in Auth0 dashboard |
 | `HTTP 403` | Missing API scopes | Add `read:users` + `delete:users` on M2M app |
-| `HTTP 429` | Rate limit | CLI retries automatically; lower volume or reduce `--rps` |
+| `HTTP 429` | Rate limit | CLI retries automatically; set `AUTH0_PLAN`, reduce `--rps`, or wait |
 | Command hangs then retries | Normal on 429 | Use `--verbose` to see wait messages |
 | Only 1000 users seen | Auth0 search cap | Documented limit; use `--limit` to cap per run |
 

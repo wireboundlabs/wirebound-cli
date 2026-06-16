@@ -1,9 +1,8 @@
 import {expect} from 'chai'
 import nock from 'nock'
 
-import {Auth0Client} from '@/lib/auth0/client'
+import {createTestAuth0Client} from '@/lib/auth0/create-client'
 import {runOrgMemberMutation} from '@/lib/auth0/org-member-mutation'
-import {RateLimiter} from '@/lib/rate-limiter'
 
 const DOMAIN = 'tenant.example.com'
 const BASE = `https://${DOMAIN}`
@@ -51,7 +50,7 @@ describe('runOrgMemberMutation', () => {
         total: 1,
       })
 
-    const client = new Auth0Client(config, new RateLimiter({rps: 10}))
+    const client = createTestAuth0Client(config)
     const result = await runOrgMemberMutation(client, {
       action: 'add',
       confirm: false,
@@ -76,7 +75,7 @@ describe('runOrgMemberMutation', () => {
       .query(true)
       .reply(200, {length: 0, limit: 100, members: [], start: 0, total: 0})
 
-    const client = new Auth0Client(config, new RateLimiter({rps: 10}))
+    const client = createTestAuth0Client(config)
     const result = await runOrgMemberMutation(client, {
       action: 'remove',
       confirm: false,
@@ -127,7 +126,7 @@ describe('runOrgMemberMutation', () => {
       },
     }
 
-    const client = new Auth0Client(config, new RateLimiter({rps: 10}))
+    const client = createTestAuth0Client(config)
     await runOrgMemberMutation(client, {
       action: 'add',
       confirm: false,
@@ -177,7 +176,7 @@ describe('runOrgMemberMutation', () => {
       },
     }
 
-    const client = new Auth0Client(config, new RateLimiter({rps: 10}))
+    const client = createTestAuth0Client(config)
     const result = await runOrgMemberMutation(client, {
       action: 'add',
       confirm: true,
@@ -208,7 +207,7 @@ describe('runOrgMemberMutation', () => {
       .post('/api/v2/organizations/org_1/members', {members: ['auth0|1']})
       .reply(500, 'fail')
 
-    const client = new Auth0Client(config, new RateLimiter({rps: 10}))
+    const client = createTestAuth0Client(config)
     const logs: string[] = []
     const result = await runOrgMemberMutation(client, {
       action: 'add',
@@ -244,7 +243,7 @@ describe('runOrgMemberMutation', () => {
       .delete('/api/v2/organizations/org_1/members', {members: ['auth0|1']})
       .reply(204)
 
-    const client = new Auth0Client(config, new RateLimiter({rps: 10}))
+    const client = createTestAuth0Client(config)
     const logs: string[] = []
     const result = await runOrgMemberMutation(client, {
       action: 'remove',
@@ -277,7 +276,7 @@ describe('runOrgMemberMutation', () => {
       .query(true)
       .reply(200, {length: 0, limit: 100, members: [], start: 0, total: 0})
 
-    const client = new Auth0Client(config, new RateLimiter({rps: 10}))
+    const client = createTestAuth0Client(config)
     const verboseLogs: string[] = []
     const result = await runOrgMemberMutation(client, {
       action: 'add',
@@ -307,7 +306,7 @@ describe('runOrgMemberMutation', () => {
       .post('/api/v2/organizations/org_1/members', {members: ['auth0|1']})
       .reply(204)
 
-    const client = new Auth0Client(config, new RateLimiter({rps: 10}))
+    const client = createTestAuth0Client(config)
     const result = await runOrgMemberMutation(client, {
       action: 'add',
       confirm: true,
@@ -360,7 +359,7 @@ describe('runOrgMemberMutation', () => {
       },
     }
 
-    const client = new Auth0Client(config, new RateLimiter({rps: 10}))
+    const client = createTestAuth0Client(config)
     await runOrgMemberMutation(client, {
       action: 'remove',
       confirm: true,

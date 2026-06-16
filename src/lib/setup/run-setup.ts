@@ -3,7 +3,7 @@ import {resolve} from 'node:path'
 
 import {CLIError} from '@oclif/core/errors'
 
-import {Auth0Client} from '@/lib/auth0/client'
+import {createAuth0Client} from '@/lib/auth0/create-client'
 import {resolveAuth0Config} from '@/lib/config/auth0'
 import {
   ensureGitignore,
@@ -15,7 +15,6 @@ import {
   writeRepoProfile,
 } from '@/lib/config/profile'
 import {type ProgressReporter} from '@/lib/progress'
-import {RateLimiter} from '@/lib/rate-limiter'
 
 export interface Auth0Credentials {
   domain: string
@@ -52,7 +51,7 @@ export async function verifySetupCredentials(
   })
 
   try {
-    const client = new Auth0Client(config, new RateLimiter({rps: config.rps}))
+    const client = createAuth0Client(config)
     await client.getToken()
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
@@ -108,6 +107,9 @@ export function logNextSteps(
   log('')
   log(
     'Need M2M credentials? See docs/vendors/auth0.md#set-up-machine-to-machine-credentials-in-auth0',
+  )
+  log(
+    'On a paid Auth0 plan? Set AUTH0_PLAN (and AUTH0_TENANT_ENV for Enterprise) in your profile — see docs/CONFIGURATION.md',
   )
 }
 

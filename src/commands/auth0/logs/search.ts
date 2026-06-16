@@ -1,13 +1,12 @@
 import {Flags} from '@oclif/core'
 
-import {Auth0Client} from '@/lib/auth0/client'
+import {createAuth0Client} from '@/lib/auth0/create-client'
 import {
   buildLogQuery,
   formatLogSearchResult,
   type LogSearchResult,
 } from '@/lib/output'
 import {Auth0Command} from '@/lib/commands/auth0-command'
-import {RateLimiter} from '@/lib/rate-limiter'
 
 export default class Auth0LogsSearch extends Auth0Command {
   static override description = 'Search Auth0 tenant logs with Lucene query syntax'
@@ -40,11 +39,9 @@ export default class Auth0LogsSearch extends Auth0Command {
     const {flags} = await this.parse(Auth0LogsSearch)
     const config = await this.resolveConfig(flags)
 
-    const limiter = new RateLimiter({
+    const client = createAuth0Client(config, {
       onRetry: (message) => this.logVerbose(message, flags.verbose),
-      rps: config.rps,
     })
-    const client = new Auth0Client(config, limiter)
 
     const query = buildLogQuery({
       from: flags.from,
@@ -52,7 +49,8 @@ export default class Auth0LogsSearch extends Auth0Command {
       to: flags.to,
     })
 
-    this.logVerbose(`Searching logs on ${config.domain}`, flags.verbose)
+    this.logResolvedConfig(config, flags.verbose ?? false)
+    this.logVerbose('Searching logs', flags.verbose)
 
     const progress = this.createProgress(flags)
     progress.fetchStart('Searching logs', flags.limit)

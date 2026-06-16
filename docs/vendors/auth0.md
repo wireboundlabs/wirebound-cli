@@ -16,6 +16,14 @@ Three credentials for the **Management API**, obtained from a **Machine-to-Machi
 | `AUTH0_MGMT_CLIENT_ID` | M2M application Client ID |
 | `AUTH0_MGMT_CLIENT_SECRET` | M2M application Client Secret |
 
+Optional rate-limit settings (paid plans only — [details](#rate-limits)):
+
+| Wirebound variable | When to set |
+|--------------------|-------------|
+| `AUTH0_PLAN` | Essentials, Professional, or Enterprise subscription |
+| `AUTH0_TENANT_ENV` | Enterprise dev/staging tenants (`non-production`) |
+| `AUTH0_RPS` | Manual global slowdown (rare) |
+
 Required Management API scopes for current commands:
 
 | Scope | Used by |
@@ -106,6 +114,27 @@ Expected:
 - No `Missing required Auth0 configuration` error
 - Output listing zero or more google-only users
 - **No** deletes (unless you passed `--confirm`)
+
+---
+
+## Shared command flags
+
+All `wirebound auth0:*` commands accept these flags (in addition to command-specific options):
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--profile` | `$WIREBOUND_PROFILE` / repo default | Load credentials from a profile |
+| `--domain` | `$AUTH0_DOMAIN` | Tenant domain |
+| `--client-id` | `$AUTH0_MGMT_CLIENT_ID` | M2M Client ID |
+| `--client-secret` | `$AUTH0_MGMT_CLIENT_SECRET` | M2M Client Secret |
+| `--auth0-plan` | `free` | `free`, `essentials-professional`, or `enterprise` |
+| `--auth0-tenant-env` | `production` | `production` or `non-production` (Enterprise) |
+| `--rps` | from plan | Override global requests per second |
+| `--verbose` | `false` | Show tenant, rate limits, pagination, and 429 retries |
+| `--json` | `false` | Machine-readable output |
+| `--confirm` | `false` | Apply destructive changes (default is dry-run) |
+
+Profile/env vars (`AUTH0_PLAN`, `AUTH0_TENANT_ENV`, `AUTH0_RPS`) are usually easier than flags for plan settings.
 
 ---
 
@@ -375,30 +404,34 @@ Summary: found=10, eligible=3, would_delete=3
 
 #### Flags
 
+Shared Auth0 flags (`--profile`, `--domain`, credentials, rate limits, `--verbose`, `--json`, `--confirm`) are documented in [Shared command flags](#shared-command-flags). Command-specific:
+
 | Flag | Default | Description |
 |------|---------|-------------|
-| `--domain` | `$AUTH0_DOMAIN` / config | Tenant domain |
-| `--client-id` | `$AUTH0_MGMT_CLIENT_ID` / config | M2M Client ID |
-| `--client-secret` | `$AUTH0_MGMT_CLIENT_SECRET` / config | M2M Client Secret |
-| `--profile` | `$WIREBOUND_PROFILE` | Global profile name |
 | `--limit` | unlimited | Max google-only users to process |
-| `--rps` | `2` | Management API requests per second |
-| `--verbose` | `false` | Log pagination and rate-limit waits |
-| `--json` | `false` | JSON output |
-| `--confirm` | `false` | Perform deletes |
 
 ---
 
 ## Rate limits
 
-Auth0 throttles Management API traffic. Typical limits:
+wirebound queues Management API calls to match [Auth0’s documented limits](https://auth0.com/docs/troubleshoot/customer-support/operational-policies/rate-limit-policy). **Free tenants need no configuration.**
 
-| Tenant type | Sustained rate |
-|-------------|----------------|
-| Free / dev | ~2 requests/second |
-| Paid | Higher (varies by plan) |
+| Plan | Profile settings | Global rate |
+|------|------------------|-------------|
+| Free (default) | — | 2 req/s |
+| Essentials / Professional | `AUTH0_PLAN=essentials-professional` | ~3 req/s + per-endpoint limits |
+| Enterprise production | `AUTH0_PLAN=enterprise` | 16 req/s |
+| Enterprise dev/staging | `AUTH0_PLAN=enterprise` + `AUTH0_TENANT_ENV=non-production` | 2 req/s |
 
-The CLI defaults to `--rps 2` and queues every API call (token, list, delete). On **HTTP 429**, it reads `X-RateLimit-Reset`, waits, and retries (up to 5 times). Use `--verbose` to see retry messages.
+Example profile snippet:
+
+```dotenv
+AUTH0_PLAN=essentials-professional
+# Enterprise non-production only:
+# AUTH0_TENANT_ENV=non-production
+```
+
+`AUTH0_RPS` or `--rps` caps the global rate only — endpoint limits still apply on paid plans. On **HTTP 429**, the CLI reads `X-RateLimit-Reset`, waits, and retries (up to 5 times). Run with `--verbose` to see resolved settings and retry messages.
 
 ---
 
@@ -418,7 +451,7 @@ The CLI defaults to `--rps 2` and queues every API call (token, list, delete). O
 | `Profile not found: .../profiles/foo.env` | Create the global profile or use `wirebound setup` in the repo |
 | HTTP **401** | Wrong client ID/secret; rotate secret in Auth0 and update profile |
 | HTTP **403** | M2M app missing required Management API scopes — see scope table above |
-| HTTP **429** | Rate limited — CLI retries; reduce `--rps` or wait |
+| HTTP **429** | Rate limited — CLI retries; set `AUTH0_PLAN` for paid tenants, or reduce `--rps` |
 | `0 google-only user(s)` | No matching users, or all Google users are linked to another identity |
 
 ---

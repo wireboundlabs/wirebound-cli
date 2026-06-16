@@ -10,6 +10,8 @@ class TestAuth0Command extends Auth0Command {
   async resolveForProfile(
     profile: string,
     flags: {
+      'auth0-plan'?: string
+      'auth0-tenant-env'?: string
       domain?: string
       'client-id'?: string
       'client-secret'?: string
@@ -45,6 +47,8 @@ describe('Auth0Command', () => {
     const command = new TestAuth0Command([], {} as ConstructorParameters<typeof Auth0Command>[1])
 
     const config = await command.resolveForProfile('dev', {
+      'auth0-plan': 'enterprise',
+      'auth0-tenant-env': 'non-production',
       domain: 'cli.example.com',
       rps: 4,
     })
@@ -53,7 +57,9 @@ describe('Auth0Command', () => {
       clientId: 'profile-cid',
       clientSecret: 'profile-secret',
       domain: 'cli.example.com',
+      plan: 'enterprise',
       rps: 4,
+      tenantEnvironment: 'non-production',
     })
   })
 })

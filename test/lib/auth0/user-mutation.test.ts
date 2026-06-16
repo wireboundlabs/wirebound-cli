@@ -1,9 +1,8 @@
 import {expect} from 'chai'
 import nock from 'nock'
 
-import {Auth0Client} from '@/lib/auth0/client'
+import {createTestAuth0Client} from '@/lib/auth0/create-client'
 import {runUserBlockMutation} from '@/lib/auth0/user-mutation'
-import {RateLimiter} from '@/lib/rate-limiter'
 
 const DOMAIN = 'tenant.example.com'
 const BASE = `https://${DOMAIN}`
@@ -39,7 +38,7 @@ describe('runUserBlockMutation', () => {
       .query({email: 'blocked@example.com'})
       .reply(200, [blockedUser])
 
-    const client = new Auth0Client(config, new RateLimiter({rps: 10}))
+    const client = createTestAuth0Client(config)
     const result = await runUserBlockMutation(client, {
       blocked: true,
       confirm: false,
@@ -61,7 +60,7 @@ describe('runUserBlockMutation', () => {
       .reply(200, {...blockedUser, blocked: false})
 
     const logs: string[] = []
-    const client = new Auth0Client(config, new RateLimiter({rps: 10}))
+    const client = createTestAuth0Client(config)
     const result = await runUserBlockMutation(client, {
       blocked: false,
       confirm: true,
@@ -108,7 +107,7 @@ describe('runUserBlockMutation', () => {
       },
     }
 
-    const client = new Auth0Client(config, new RateLimiter({rps: 10}))
+    const client = createTestAuth0Client(config)
     await runUserBlockMutation(client, {
       blocked: true,
       confirm: true,
@@ -130,7 +129,7 @@ describe('runUserBlockMutation', () => {
       .reply(200, [{blocked: false, email: 'user@example.com', user_id: 'auth0|2'}])
     nock(BASE).patch('/api/v2/users/auth0%7C2', {blocked: true}).reply(500, 'fail')
 
-    const client = new Auth0Client(config, new RateLimiter({rps: 10}))
+    const client = createTestAuth0Client(config)
     const result = await runUserBlockMutation(client, {
       blocked: true,
       confirm: true,

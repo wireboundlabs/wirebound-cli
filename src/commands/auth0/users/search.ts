@@ -1,6 +1,6 @@
 import {Flags} from '@oclif/core'
 
-import {Auth0Client} from '@/lib/auth0/client'
+import {createAuth0Client} from '@/lib/auth0/create-client'
 import {
   formatUserSearchResult,
   parseUserFields,
@@ -8,7 +8,6 @@ import {
   type UserSearchResult,
 } from '@/lib/output'
 import {Auth0Command} from '@/lib/commands/auth0-command'
-import {RateLimiter} from '@/lib/rate-limiter'
 
 export default class Auth0UsersSearch extends Auth0Command {
   static override description = 'Search Auth0 users with a Lucene v3 query'
@@ -38,13 +37,12 @@ export default class Auth0UsersSearch extends Auth0Command {
     const {flags} = await this.parse(Auth0UsersSearch)
     const config = await this.resolveConfig(flags)
 
-    const limiter = new RateLimiter({
+    const client = createAuth0Client(config, {
       onRetry: (message) => this.logVerbose(message, flags.verbose),
-      rps: config.rps,
     })
-    const client = new Auth0Client(config, limiter)
 
-    this.logVerbose(`Searching users on ${config.domain}`, flags.verbose)
+    this.logResolvedConfig(config, flags.verbose ?? false)
+    this.logVerbose('Searching users', flags.verbose)
 
     const progress = this.createProgress(flags)
     progress.fetchStart('Searching users', flags.limit)

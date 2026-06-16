@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.4.0] - 2026-06-16
+
+### Added
+
+- Auth0 plan-aware rate limiting: `--auth0-plan` / `AUTH0_PLAN` (`free`, `essentials-professional`, `enterprise`)
+- Tenant environment option for Enterprise limits: `--auth0-tenant-env` / `AUTH0_TENANT_ENV` (`production`, `non-production`)
+- Per-endpoint Management API throttling on paid plans, aligned with [Auth0 rate limit docs](https://auth0.com/docs/troubleshoot/customer-support/operational-policies/rate-limit-policy)
+- Optional global override via `--rps` / `AUTH0_RPS` (endpoint limits still apply)
+
+### Changed
+
+- Default rate limits derive from plan when `--rps` is not set (Free tenants remain at 2 req/s)
+
 ## [0.1.1] - 2026-06-12
 
 ### Added

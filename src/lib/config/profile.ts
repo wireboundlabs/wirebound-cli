@@ -220,6 +220,11 @@ export function formatConfigFile(
     `AUTH0_MGMT_CLIENT_ID=${vars.AUTH0_MGMT_CLIENT_ID ?? ''}`,
     `AUTH0_MGMT_CLIENT_SECRET=${vars.AUTH0_MGMT_CLIENT_SECRET ?? ''}`,
     '',
+    '# Auth0 rate limits (optional — defaults to free, 2 req/s)',
+    '# AUTH0_PLAN=free                      # free | essentials-professional | enterprise',
+    '# AUTH0_TENANT_ENV=production        # production | non-production (Enterprise only)',
+    '# AUTH0_RPS=2                        # optional global override; endpoint limits still apply',
+    '',
   ]
 
   return lines.join('\n')

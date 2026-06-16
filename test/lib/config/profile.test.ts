@@ -267,6 +267,16 @@ describe('config profile', () => {
         'dev',
       ),
     ).to.contain('# Profile: dev')
+    expect(
+      formatConfigFile(
+        {
+          AUTH0_DOMAIN: 'tenant.example.com',
+          AUTH0_MGMT_CLIENT_ID: 'cid',
+          AUTH0_MGMT_CLIENT_SECRET: 'secret',
+        },
+        'dev',
+      ),
+    ).to.contain('AUTH0_PLAN=free')
   })
 
   it('ensureGitignore returns false when gitignore is missing', () => {

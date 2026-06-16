@@ -1,12 +1,11 @@
 import {Flags} from '@oclif/core'
 
-import {Auth0Client} from '@/lib/auth0/client'
+import {createAuth0Client} from '@/lib/auth0/create-client'
 import {
   formatOrganizationListResult,
   type OrganizationListResult,
 } from '@/lib/output'
 import {Auth0Command} from '@/lib/commands/auth0-command'
-import {RateLimiter} from '@/lib/rate-limiter'
 
 export default class Auth0OrgsList extends Auth0Command {
   static override description = 'List Auth0 organizations in the tenant'
@@ -27,13 +26,12 @@ export default class Auth0OrgsList extends Auth0Command {
     const {flags} = await this.parse(Auth0OrgsList)
     const config = await this.resolveConfig(flags)
 
-    const limiter = new RateLimiter({
+    const client = createAuth0Client(config, {
       onRetry: (message) => this.logVerbose(message, flags.verbose),
-      rps: config.rps,
     })
-    const client = new Auth0Client(config, limiter)
 
-    this.logVerbose(`Listing organizations on ${config.domain}`, flags.verbose)
+    this.logResolvedConfig(config, flags.verbose ?? false)
+    this.logVerbose('Listing organizations', flags.verbose)
 
     const progress = this.createProgress(flags)
     progress.fetchStart('Listing organizations', flags.limit)

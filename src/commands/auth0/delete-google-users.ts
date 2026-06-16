@@ -1,11 +1,11 @@
 import {Flags} from '@oclif/core'
 
-import {Auth0Client} from '@/lib/auth0/client'
+import {createAuth0Client} from '@/lib/auth0/create-client'
 import {type Auth0User} from '@/lib/auth0/types'
 import {formatHumanResult, type DeleteCommandResult} from '@/lib/output'
 import {type ProgressReporter} from '@/lib/progress'
-import {RateLimiter} from '@/lib/rate-limiter'
 import {Auth0Command} from '@/lib/commands/auth0-command'
+import {type Auth0Client} from '@/lib/auth0/client'
 
 async function deleteEligibleUsers(
   client: Auth0Client,
@@ -62,14 +62,14 @@ export default class Auth0DeleteGoogleUsers extends Auth0Command {
     const {flags} = await this.parse(Auth0DeleteGoogleUsers)
     const config = await this.resolveConfig(flags)
 
-    const limiter = new RateLimiter({
+    const client = createAuth0Client(config, {
       onRetry: (message) => this.logVerbose(message, flags.verbose),
-      rps: config.rps,
     })
-    const client = new Auth0Client(config, limiter)
+
+    this.logResolvedConfig(config, flags.verbose ?? false)
 
     this.logVerbose(
-      `Listing users with google-oauth2 identity from ${config.domain}`,
+      `Listing users with google-oauth2 identity`,
       flags.verbose,
     )
 

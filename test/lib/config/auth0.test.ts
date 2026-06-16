@@ -1,7 +1,7 @@
 import {expect} from 'chai'
 import {CLIError} from '@oclif/core/errors'
 
-import {resolveAuth0Config} from '@/lib/config/auth0'
+import {formatRateLimitSummary, resolveAuth0Config} from '@/lib/config/auth0'
 
 describe('resolveAuth0Config', () => {
   const originalEnv = {...process.env}
@@ -16,30 +16,55 @@ describe('resolveAuth0Config', () => {
         clientId: 'cid',
         clientSecret: 'secret',
         domain: 'tenant.example.com',
+        plan: 'enterprise',
         rps: 5,
+        tenantEnvironment: 'non-production',
       }),
     ).to.deep.equal({
       clientId: 'cid',
       clientSecret: 'secret',
       domain: 'tenant.example.com',
+      plan: 'enterprise',
       rps: 5,
+      tenantEnvironment: 'non-production',
     })
   })
 
-  it('defaults rps to 2', () => {
+  it('defaults plan, tenant environment, and rps for free tenants', () => {
     expect(
       resolveAuth0Config({
         clientId: 'cid',
         clientSecret: 'secret',
         domain: 'tenant.example.com',
-      }).rps,
-    ).to.equal(2)
+      }),
+    ).to.deep.equal({
+      clientId: 'cid',
+      clientSecret: 'secret',
+      domain: 'tenant.example.com',
+      plan: 'free',
+      rps: 2,
+      tenantEnvironment: 'production',
+    })
   })
 
-  it('reads values from profile vars and env', () => {
+  it('derives enterprise production rps from plan', () => {
+    expect(
+      resolveAuth0Config({
+        clientId: 'cid',
+        clientSecret: 'secret',
+        domain: 'tenant.example.com',
+        plan: 'enterprise',
+      }).rps,
+    ).to.equal(16)
+  })
+
+  it('reads plan, tenant env, and rps from profile vars and env', () => {
     process.env.AUTH0_DOMAIN = 'env.example.com'
     process.env.AUTH0_MGMT_CLIENT_ID = 'env-cid'
     process.env.AUTH0_MGMT_CLIENT_SECRET = 'env-secret'
+    process.env.AUTH0_PLAN = 'essentials-professional'
+    process.env.AUTH0_TENANT_ENV = 'non-production'
+    process.env.AUTH0_RPS = '4'
 
     expect(
       resolveAuth0Config({
@@ -52,7 +77,9 @@ describe('resolveAuth0Config', () => {
       clientId: 'profile-cid',
       clientSecret: 'env-secret',
       domain: 'profile.example.com',
-      rps: 2,
+      plan: 'essentials-professional',
+      rps: 4,
+      tenantEnvironment: 'non-production',
     })
   })
 
@@ -114,22 +141,161 @@ describe('resolveAuth0Config', () => {
       clientId: 'env-cid',
       clientSecret: 'env-secret',
       domain: 'env.example.com',
+      plan: 'free',
       rps: 2,
+      tenantEnvironment: 'production',
     })
   })
 
   it('prefers explicit input over profile vars and env', () => {
     process.env.AUTH0_MGMT_CLIENT_ID = 'env-cid'
+    process.env.AUTH0_PLAN = 'free'
 
     expect(
       resolveAuth0Config({
         clientId: 'explicit-cid',
         clientSecret: 'secret',
         domain: 'tenant.example.com',
+        plan: 'enterprise',
         profileVars: {
           AUTH0_MGMT_CLIENT_ID: 'profile-cid',
+          AUTH0_PLAN: 'free',
         },
       }).clientId,
     ).to.equal('explicit-cid')
+  })
+
+  it('reads explicit rps without env or profile vars', () => {
+    expect(
+      resolveAuth0Config({
+        clientId: 'cid',
+        clientSecret: 'secret',
+        domain: 'tenant.example.com',
+        plan: 'essentials-professional',
+        rps: 1,
+      }).rps,
+    ).to.equal(1)
+  })
+
+  it('reads plan from profile vars', () => {
+    expect(
+      resolveAuth0Config({
+        clientId: 'cid',
+        clientSecret: 'secret',
+        domain: 'tenant.example.com',
+        profileVars: {AUTH0_PLAN: 'enterprise', AUTH0_TENANT_ENV: 'non-production'},
+      }),
+    ).to.deep.include({
+      plan: 'enterprise',
+      rps: 2,
+      tenantEnvironment: 'non-production',
+    })
+  })
+
+  it('prefers explicit rps over profile and env values', () => {
+    process.env.AUTH0_RPS = '4'
+
+    expect(
+      resolveAuth0Config({
+        clientId: 'cid',
+        clientSecret: 'secret',
+        domain: 'tenant.example.com',
+        profileVars: {AUTH0_RPS: '6'},
+        rps: 8,
+      }).rps,
+    ).to.equal(8)
+  })
+
+  it('reads tenant environment from explicit input', () => {
+    expect(
+      resolveAuth0Config({
+        clientId: 'cid',
+        clientSecret: 'secret',
+        domain: 'tenant.example.com',
+        tenantEnvironment: 'non-production',
+      }).tenantEnvironment,
+    ).to.equal('non-production')
+  })
+
+  it('reads plan from environment when profile omits it', () => {
+    process.env.AUTH0_PLAN = 'enterprise'
+    process.env.AUTH0_DOMAIN = 'env.example.com'
+    process.env.AUTH0_MGMT_CLIENT_ID = 'env-cid'
+    process.env.AUTH0_MGMT_CLIENT_SECRET = 'env-secret'
+
+    expect(resolveAuth0Config({}).plan).to.equal('enterprise')
+  })
+
+  it('throws for invalid rps values from flags or profile', () => {
+    expect(() =>
+      resolveAuth0Config({
+        clientId: 'cid',
+        clientSecret: 'secret',
+        domain: 'tenant.example.com',
+        rps: 0,
+      }),
+    ).to.throw(CLIError, /Invalid AUTH0_RPS/)
+
+    expect(() =>
+      resolveAuth0Config({
+        clientId: 'cid',
+        clientSecret: 'secret',
+        domain: 'tenant.example.com',
+        profileVars: {AUTH0_RPS: '0'},
+      }),
+    ).to.throw(CLIError, /Invalid AUTH0_RPS/)
+  })
+
+  it('formatRateLimitSummary describes plan and global rate', () => {
+    expect(
+      formatRateLimitSummary({
+        clientId: 'cid',
+        clientSecret: 'secret',
+        domain: 'tenant.example.com',
+        plan: 'free',
+        rps: 2,
+        tenantEnvironment: 'production',
+      }),
+    ).to.equal('plan=free, 2 req/s global')
+
+    expect(
+      formatRateLimitSummary({
+        clientId: 'cid',
+        clientSecret: 'secret',
+        domain: 'tenant.example.com',
+        plan: 'enterprise',
+        rps: 2,
+        tenantEnvironment: 'non-production',
+      }),
+    ).to.equal('plan=enterprise, tenant=non-production, 2 req/s global')
+  })
+
+  it('throws for invalid plan and rps values', () => {
+    expect(() =>
+      resolveAuth0Config({
+        clientId: 'cid',
+        clientSecret: 'secret',
+        domain: 'tenant.example.com',
+        plan: 'invalid',
+      }),
+    ).to.throw(CLIError, /Invalid AUTH0_PLAN/)
+
+    expect(() =>
+      resolveAuth0Config({
+        clientId: 'cid',
+        clientSecret: 'secret',
+        domain: 'tenant.example.com',
+        tenantEnvironment: 'qa',
+      }),
+    ).to.throw(CLIError, /Invalid AUTH0_TENANT_ENV/)
+
+    expect(() =>
+      resolveAuth0Config({
+        clientId: 'cid',
+        clientSecret: 'secret',
+        domain: 'tenant.example.com',
+        profileVars: {AUTH0_RPS: 'fast'},
+      }),
+    ).to.throw(CLIError, /Invalid AUTH0_RPS/)
   })
 })

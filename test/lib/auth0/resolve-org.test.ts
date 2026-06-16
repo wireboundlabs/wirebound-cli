@@ -1,9 +1,8 @@
 import {expect} from 'chai'
 import nock from 'nock'
 
-import {Auth0Client} from '@/lib/auth0/client'
+import {createTestAuth0Client} from '@/lib/auth0/create-client'
 import {resolveOrganization, validateOrgFlags} from '@/lib/auth0/resolve-org'
-import {RateLimiter} from '@/lib/rate-limiter'
 
 const DOMAIN = 'tenant.example.com'
 const BASE = `https://${DOMAIN}`
@@ -41,7 +40,7 @@ describe('resolveOrganization', () => {
       .get('/api/v2/organizations/org_1')
       .reply(200, {id: 'org_1', name: 'acme-corp'})
 
-    const client = new Auth0Client(config, new RateLimiter({rps: 10}))
+    const client = createTestAuth0Client(config)
     const org = await resolveOrganization(client, {orgId: 'org_1'})
 
     expect(org.name).to.equal('acme-corp')
@@ -54,7 +53,7 @@ describe('resolveOrganization', () => {
       .get('/api/v2/organizations/name/acme-corp')
       .reply(200, {id: 'org_1', name: 'acme-corp'})
 
-    const client = new Auth0Client(config, new RateLimiter({rps: 10}))
+    const client = createTestAuth0Client(config)
     const org = await resolveOrganization(client, {orgName: 'acme-corp'})
 
     expect(org.name).to.equal('acme-corp')
@@ -62,7 +61,7 @@ describe('resolveOrganization', () => {
   })
 
   it('resolveOrganization throws when no target is provided', async () => {
-    const client = new Auth0Client(config, new RateLimiter({rps: 10}))
+    const client = createTestAuth0Client(config)
 
     try {
       await resolveOrganization(client, {})

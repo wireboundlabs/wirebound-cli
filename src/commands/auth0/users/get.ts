@@ -1,10 +1,9 @@
 import {Flags} from '@oclif/core'
 import {CLIError} from '@oclif/core/errors'
 
-import {Auth0Client} from '@/lib/auth0/client'
+import {createAuth0Client} from '@/lib/auth0/create-client'
 import {formatUserGetResult} from '@/lib/output'
 import {Auth0Command} from '@/lib/commands/auth0-command'
-import {RateLimiter} from '@/lib/rate-limiter'
 
 export default class Auth0UsersGet extends Auth0Command {
   static override description = 'Get an Auth0 user by email or user ID'
@@ -33,11 +32,11 @@ export default class Auth0UsersGet extends Auth0Command {
 
     const config = await this.resolveConfig(flags)
 
-    const limiter = new RateLimiter({
+    const client = createAuth0Client(config, {
       onRetry: (message) => this.logVerbose(message, flags.verbose),
-      rps: config.rps,
     })
-    const client = new Auth0Client(config, limiter)
+
+    this.logResolvedConfig(config, flags.verbose ?? false)
 
     const users = flags.id
       ? [await client.getUserById(flags.id)]

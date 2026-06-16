@@ -1,9 +1,8 @@
-import {Auth0Client} from '@/lib/auth0/client'
+import {createAuth0Client} from '@/lib/auth0/create-client'
 import {orgMemberMutationFlags} from '@/lib/auth0/org-members'
 import {runOrgMemberMutation} from '@/lib/auth0/org-member-mutation'
 import {formatOrgMemberMutationResult} from '@/lib/output'
 import {Auth0Command} from '@/lib/commands/auth0-command'
-import {RateLimiter} from '@/lib/rate-limiter'
 
 export default class Auth0OrgsMembersAdd extends Auth0Command {
   static override description =
@@ -20,11 +19,11 @@ export default class Auth0OrgsMembersAdd extends Auth0Command {
     const {flags} = await this.parse(Auth0OrgsMembersAdd)
     const config = await this.resolveConfig(flags)
 
-    const limiter = new RateLimiter({
+    const client = createAuth0Client(config, {
       onRetry: (message) => this.logVerbose(message, flags.verbose),
-      rps: config.rps,
     })
-    const client = new Auth0Client(config, limiter)
+
+    this.logResolvedConfig(config, flags.verbose ?? false)
 
     const progress = this.createProgress(flags)
 

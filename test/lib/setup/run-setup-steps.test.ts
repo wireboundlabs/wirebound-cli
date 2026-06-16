@@ -204,6 +204,7 @@ describe('runSetup steps', () => {
         true,
       )
       expect(logs.some((line) => line.includes('docs/vendors/auth0.md'))).to.equal(true)
+      expect(logs.some((line) => line.includes('AUTH0_PLAN'))).to.equal(true)
     })
 
     it('logs default-profile hint when default is set', () => {

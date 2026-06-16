@@ -1,6 +1,6 @@
 import {Flags} from '@oclif/core'
 
-import {Auth0Client} from '@/lib/auth0/client'
+import {createAuth0Client} from '@/lib/auth0/create-client'
 import {orgTargetFlags} from '@/lib/auth0/org-members'
 import {resolveOrganization, validateOrgFlags} from '@/lib/auth0/resolve-org'
 import {
@@ -8,7 +8,6 @@ import {
   type OrganizationMembersResult,
 } from '@/lib/output'
 import {Auth0Command} from '@/lib/commands/auth0-command'
-import {RateLimiter} from '@/lib/rate-limiter'
 
 export default class Auth0OrgsMembersList extends Auth0Command {
   static override description = 'List members of an Auth0 organization'
@@ -32,11 +31,9 @@ export default class Auth0OrgsMembersList extends Auth0Command {
 
     const config = await this.resolveConfig(flags)
 
-    const limiter = new RateLimiter({
+    const client = createAuth0Client(config, {
       onRetry: (message) => this.logVerbose(message, flags.verbose),
-      rps: config.rps,
     })
-    const client = new Auth0Client(config, limiter)
 
     const progress = this.createProgress(flags)
     const org = await progress.spinAsync('Resolving organization', () =>
@@ -46,7 +43,8 @@ export default class Auth0OrgsMembersList extends Auth0Command {
       }),
     )
 
-    this.logVerbose(`Listing members of org ${org.name} on ${config.domain}`, flags.verbose)
+    this.logResolvedConfig(config, flags.verbose ?? false)
+    this.logVerbose(`Listing members of org ${org.name}`, flags.verbose)
 
     progress.fetchStart('Listing org members', flags.limit)
 

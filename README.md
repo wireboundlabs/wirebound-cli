@@ -30,7 +30,7 @@ wirebound auth0 users search --query 'email:*@yourcompany.com'
 |---|---|
 | **Safe by default** | Every destructive command **dry-runs first**. Review the output, then pass `--confirm`. No surprises in production. |
 | **Built for bulk work** | Block hundreds of users with a Lucene query. Add or remove org members in batch. Find duplicate emails before cleanup. |
-| **CI-ready** | `--json` output, predictable exit codes, automatic **429 retry**, and configurable rate limits (`--rps`). Drop it into GitHub Actions today. |
+| **CI-ready** | `--json` output, predictable exit codes, automatic **429 retry**, and plan-aware rate limits. Drop it into GitHub Actions today. |
 | **Multi-environment profiles** | Store credentials in `.wirebound/profiles/` per repo — switch tenants with `--profile staging` or `$WIREBOUND_PROFILE`. |
 | **Clear feedback** | Live **progress bars** on long searches and bulk mutations so you always know work is happening. |
 | **Repo-native setup** | `wirebound setup` writes gitignored config, validates credentials with `--check`, and sets a default profile in one flow. |
@@ -228,6 +228,9 @@ wirebound auth0 users search --query 'email:*@example.com' --json
 | `AUTH0_DOMAIN` | Tenant domain (no `https://`) |
 | `AUTH0_MGMT_CLIENT_ID` | M2M Client ID |
 | `AUTH0_MGMT_CLIENT_SECRET` | M2M Client Secret |
+| `AUTH0_PLAN` | Optional. `free` (default), `essentials-professional`, or `enterprise` |
+| `AUTH0_TENANT_ENV` | Optional. `production` (default) or `non-production` — Enterprise only |
+| `AUTH0_RPS` | Optional global rate override (req/s) |
 | `WIREBOUND_PROFILE` | Default profile name (optional) |
 
 Required Management API scopes depend on the commands you run — see [docs/vendors/auth0.md](docs/vendors/auth0.md).
@@ -241,9 +244,11 @@ Required Management API scopes depend on the commands you run — see [docs/vend
 | `--profile <name>` | Load `.wirebound/profiles/<name>.env` or a global profile |
 | `--confirm` | Perform destructive actions (default is dry-run) |
 | `--json` | Machine-readable JSON output for scripts and CI |
-| `--verbose` | Log pagination details and rate-limit retries (replaces progress bars) |
+| `--verbose` | Log resolved tenant, rate limits, pagination, and 429 retries |
 | `--limit <n>` | Cap how many records to fetch or process |
-| `--rps <n>` | Management API requests per second (default `2`) |
+| `--rps <n>` | Override global Management API requests per second (default from plan) |
+| `--auth0-plan <plan>` | Auth0 subscription plan: `free`, `essentials-professional`, `enterprise` |
+| `--auth0-tenant-env <env>` | Tenant environment: `production`, `non-production` (Enterprise) |
 
 ---
 
@@ -263,7 +268,7 @@ Yes. **Dry-run is the default** for every destructive command. Review output, th
 
 ### Can I use this in GitHub Actions or CI pipelines?
 
-Yes. Set `AUTH0_DOMAIN`, `AUTH0_MGMT_CLIENT_ID`, and `AUTH0_MGMT_CLIENT_SECRET` as secrets, add `--json`, and check exit codes. Rate limiting and HTTP 429 retries are handled automatically.
+Yes. Set `AUTH0_DOMAIN`, `AUTH0_MGMT_CLIENT_ID`, and `AUTH0_MGMT_CLIENT_SECRET` as secrets, add `--json`, and check exit codes. Rate limiting and HTTP 429 retries are handled automatically. On a paid Auth0 plan, also set `AUTH0_PLAN` (and `AUTH0_TENANT_ENV` for Enterprise dev/staging tenants).
 
 ### What Auth0 Management API scopes do I need?
 
@@ -280,7 +285,18 @@ At minimum: `read:users` for search/get. Block/unblock needs `update:users`. Del
 
 ## Rate limits
 
-Auth0 throttles Management API traffic. wirebound queues requests (default **2 req/s**, override with `--rps`) and automatically retries on **HTTP 429** using `X-RateLimit-Reset`.
+Auth0 throttles Management API traffic by plan and endpoint. wirebound applies [Auth0’s documented limits](https://auth0.com/docs/troubleshoot/customer-support/operational-policies/rate-limit-policy) automatically.
+
+| Plan | What to set | Global rate |
+|------|-------------|-------------|
+| Free / trial | *(default — nothing to set)* | 2 req/s |
+| Essentials / Professional | `AUTH0_PLAN=essentials-professional` | ~3 req/s + per-endpoint limits |
+| Enterprise production | `AUTH0_PLAN=enterprise` | 16 req/s |
+| Enterprise dev/staging | `AUTH0_PLAN=enterprise` + `AUTH0_TENANT_ENV=non-production` | 2 req/s |
+
+Use `--verbose` to confirm resolved settings. Override the global rate with `--rps` or `AUTH0_RPS` if needed. The CLI retries on **HTTP 429** using `X-RateLimit-Reset`.
+
+See [docs/CONFIGURATION.md](docs/CONFIGURATION.md#rate-limits) for profile examples.
 
 User search is capped at **1000 results per query** (Auth0 platform limit).
 

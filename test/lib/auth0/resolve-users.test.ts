@@ -1,9 +1,8 @@
 import {expect} from 'chai'
 import nock from 'nock'
 
-import {Auth0Client} from '@/lib/auth0/client'
+import {createTestAuth0Client} from '@/lib/auth0/create-client'
 import {resolveUsers, validateTargetFlags} from '@/lib/auth0/resolve-users'
-import {RateLimiter} from '@/lib/rate-limiter'
 
 const DOMAIN = 'tenant.example.com'
 const BASE = `https://${DOMAIN}`
@@ -39,7 +38,7 @@ describe('resolveUsers', () => {
   })
 
   it('resolveUsers throws when no target is provided', async () => {
-    const client = new Auth0Client(config, new RateLimiter({rps: 10}))
+    const client = createTestAuth0Client(config)
 
     try {
       await resolveUsers(client, {})
@@ -55,7 +54,7 @@ describe('resolveUsers', () => {
       .get('/api/v2/users/auth0%7C1')
       .reply(200, {email: 'user@example.com', user_id: 'auth0|1'})
 
-    const client = new Auth0Client(config, new RateLimiter({rps: 10}))
+    const client = createTestAuth0Client(config)
     const users = await resolveUsers(client, {id: 'auth0|1'})
 
     expect(users).to.deep.equal([{email: 'user@example.com', user_id: 'auth0|1'}])
@@ -69,7 +68,7 @@ describe('resolveUsers', () => {
       .query({email: 'user@example.com'})
       .reply(200, [{email: 'user@example.com', user_id: 'auth0|1'}])
 
-    const client = new Auth0Client(config, new RateLimiter({rps: 10}))
+    const client = createTestAuth0Client(config)
     const users = await resolveUsers(client, {email: 'user@example.com'})
 
     expect(users).to.have.length(1)
@@ -90,7 +89,7 @@ describe('resolveUsers', () => {
       })
 
     const pages: string[] = []
-    const client = new Auth0Client(config, new RateLimiter({rps: 10}))
+    const client = createTestAuth0Client(config)
     const users = await resolveUsers(client, {
       limit: 10,
       onPage: ({page, rawCount, total}) => {

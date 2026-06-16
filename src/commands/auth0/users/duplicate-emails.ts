@@ -1,12 +1,11 @@
 import {Flags} from '@oclif/core'
 
-import {Auth0Client} from '@/lib/auth0/client'
+import {createAuth0Client} from '@/lib/auth0/create-client'
 import {
   formatDuplicateEmailsResult,
   type DuplicateEmailsResult,
 } from '@/lib/output'
 import {Auth0Command} from '@/lib/commands/auth0-command'
-import {RateLimiter} from '@/lib/rate-limiter'
 
 export default class Auth0UsersDuplicateEmails extends Auth0Command {
   static override description =
@@ -29,13 +28,12 @@ export default class Auth0UsersDuplicateEmails extends Auth0Command {
     const {flags} = await this.parse(Auth0UsersDuplicateEmails)
     const config = await this.resolveConfig(flags)
 
-    const limiter = new RateLimiter({
+    const client = createAuth0Client(config, {
       onRetry: (message) => this.logVerbose(message, flags.verbose),
-      rps: config.rps,
     })
-    const client = new Auth0Client(config, limiter)
 
-    this.logVerbose(`Scanning users with emails on ${config.domain}`, flags.verbose)
+    this.logResolvedConfig(config, flags.verbose ?? false)
+    this.logVerbose('Scanning users with duplicate emails', flags.verbose)
 
     const progress = this.createProgress(flags)
     progress.fetchStart('Scanning users', flags.limit)

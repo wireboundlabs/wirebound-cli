@@ -1,8 +1,7 @@
 import {expect} from 'chai'
 import nock from 'nock'
 
-import {Auth0Client} from '@/lib/auth0/client'
-import {RateLimiter} from '@/lib/rate-limiter'
+import {createTestAuth0Client} from '@/lib/auth0/create-client'
 
 const DOMAIN = 'tenant.example.com'
 const BASE = `https://${DOMAIN}`
@@ -11,7 +10,9 @@ const config = {
   clientId: 'cid',
   clientSecret: 'secret',
   domain: DOMAIN,
+  plan: 'free' as const,
   rps: 10,
+  tenantEnvironment: 'production' as const,
 }
 
 function mockToken(): void {
@@ -38,7 +39,7 @@ describe('Auth0Client', () => {
         users: [{email: 'a@example.com', user_id: 'auth0|1'}],
       })
 
-    const client = new Auth0Client(config, new RateLimiter({rps: 10}))
+    const client = createTestAuth0Client(config)
     const {total, users} = await client.searchUsers('email:a@example.com')
 
     expect(total).to.equal(1)
@@ -53,7 +54,7 @@ describe('Auth0Client', () => {
       .get('/api/v2/users/auth0%7C1')
       .reply(200, {email: 'a@example.com', user_id: 'auth0|1'})
 
-    const client = new Auth0Client(config, new RateLimiter({rps: 10}))
+    const client = createTestAuth0Client(config)
     const user = await client.getUserById('auth0|1')
 
     expect(user.user_id).to.equal('auth0|1')
@@ -67,7 +68,7 @@ describe('Auth0Client', () => {
       .query({email: 'a@example.com'})
       .reply(200, [{email: 'a@example.com', user_id: 'auth0|1'}])
 
-    const client = new Auth0Client(config, new RateLimiter({rps: 10}))
+    const client = createTestAuth0Client(config)
     const users = await client.getUsersByEmail('a@example.com')
 
     expect(users).to.have.length(1)
@@ -80,7 +81,7 @@ describe('Auth0Client', () => {
       .patch('/api/v2/users/auth0%7C1', {blocked: true})
       .reply(200, {blocked: true, user_id: 'auth0|1'})
 
-    const client = new Auth0Client(config, new RateLimiter({rps: 10}))
+    const client = createTestAuth0Client(config)
     const user = await client.updateUser('auth0|1', {blocked: true})
 
     expect(user.blocked).to.equal(true)
@@ -101,7 +102,7 @@ describe('Auth0Client', () => {
         },
       ])
 
-    const client = new Auth0Client(config, new RateLimiter({rps: 10}))
+    const client = createTestAuth0Client(config)
     const {logs} = await client.searchLogs('type:f', {limit: 10})
 
     expect(logs).to.have.length(1)
@@ -122,7 +123,7 @@ describe('Auth0Client', () => {
       })))
 
     const pages: number[] = []
-    const client = new Auth0Client(config, new RateLimiter({rps: 10}))
+    const client = createTestAuth0Client(config)
     const {logs, truncated} = await client.searchLogs('type:f', {
       limit: 50,
       onPage: ({page}) => pages.push(page),
@@ -158,7 +159,7 @@ describe('Auth0Client', () => {
         ],
       })
 
-    const client = new Auth0Client(config, new RateLimiter({rps: 10}))
+    const client = createTestAuth0Client(config)
     const {duplicates, scanned} = await client.findDuplicateEmails()
 
     expect(scanned).to.equal(2)
@@ -180,7 +181,7 @@ describe('Auth0Client', () => {
         total: 1,
       })
 
-    const client = new Auth0Client(config, new RateLimiter({rps: 10}))
+    const client = createTestAuth0Client(config)
     const {organizations, total} = await client.listOrganizations()
 
     expect(total).to.equal(1)
@@ -194,7 +195,7 @@ describe('Auth0Client', () => {
       .get('/api/v2/organizations/org_1')
       .reply(200, {id: 'org_1', name: 'acme-corp'})
 
-    const client = new Auth0Client(config, new RateLimiter({rps: 10}))
+    const client = createTestAuth0Client(config)
     const org = await client.getOrganizationById('org_1')
 
     expect(org.name).to.equal('acme-corp')
@@ -207,7 +208,7 @@ describe('Auth0Client', () => {
       .get('/api/v2/organizations/name/acme-corp')
       .reply(200, {id: 'org_1', name: 'acme-corp'})
 
-    const client = new Auth0Client(config, new RateLimiter({rps: 10}))
+    const client = createTestAuth0Client(config)
     const org = await client.getOrganizationByName('acme-corp')
 
     expect(org.id).to.equal('org_1')
@@ -227,7 +228,7 @@ describe('Auth0Client', () => {
         total: 1,
       })
 
-    const client = new Auth0Client(config, new RateLimiter({rps: 10}))
+    const client = createTestAuth0Client(config)
     const {members, total} = await client.listOrganizationMembers('org_1')
 
     expect(total).to.equal(1)
@@ -241,7 +242,7 @@ describe('Auth0Client', () => {
       .post('/api/v2/organizations/org_1/members', {members: ['auth0|1']})
       .reply(204)
 
-    const client = new Auth0Client(config, new RateLimiter({rps: 10}))
+    const client = createTestAuth0Client(config)
     await client.addOrganizationMembers('org_1', ['auth0|1'])
 
     expect(nock.pendingMocks()).to.have.length(0)
@@ -253,7 +254,7 @@ describe('Auth0Client', () => {
       .delete('/api/v2/organizations/org_1/members', {members: ['auth0|1']})
       .reply(204)
 
-    const client = new Auth0Client(config, new RateLimiter({rps: 10}))
+    const client = createTestAuth0Client(config)
     await client.removeOrganizationMembers('org_1', ['auth0|1'])
 
     expect(nock.pendingMocks()).to.have.length(0)
