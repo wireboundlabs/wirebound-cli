@@ -25,6 +25,38 @@ export function computeFetchProgressTotal(
   }
 }
 
+export function normalizeTaskTotal(total: number): number {
+  return Math.max(total, 1)
+}
+
+export interface Spinner {
+  start(message: string): void
+  stop(message: string): void
+}
+
+export async function runWithSpinner<T>(
+  message: string,
+  fn: () => Promise<T>,
+  doneMessage: string | undefined,
+  spinner: Spinner,
+): Promise<T> {
+  spinner.start(message)
+
+  try {
+    return await fn()
+  } finally {
+    spinner.stop(doneMessage ?? message)
+  }
+}
+
+export function stopProgressBar(bar: cliProgress.SingleBar | undefined): void {
+  if (!bar) {
+    return
+  }
+
+  bar.stop()
+}
+
 export interface ProgressContext {
   enabled: boolean
 }
@@ -119,7 +151,7 @@ class TerminalProgressReporter implements ProgressReporter {
       },
       cliProgress.Presets.legacy,
     )
-    this.bar.start(Math.max(total, 1), 0, {label})
+    this.bar.start(normalizeTaskTotal(total), 0, {label})
   }
 
   taskAdvance(): void {
@@ -136,21 +168,11 @@ class TerminalProgressReporter implements ProgressReporter {
     doneMessage?: string,
   ): Promise<T> {
     this.stopBar()
-    action.start(message)
-
-    try {
-      return await fn()
-    } finally {
-      action.stop(doneMessage ?? message)
-    }
+    return runWithSpinner(message, fn, doneMessage, action)
   }
 
   private stopBar(): void {
-    if (!this.bar) {
-      return
-    }
-
-    this.bar.stop()
+    stopProgressBar(this.bar)
     this.bar = undefined
   }
 }

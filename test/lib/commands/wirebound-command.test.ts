@@ -12,6 +12,31 @@ class TestCommand extends WireboundCommand {
   }
 }
 
+class VerboseHarness extends WireboundCommand {
+  async run(): Promise<void> {}
+
+  testLogging(): string[] {
+    const logs: string[] = []
+    this.log = (message: string) => {
+      logs.push(message)
+    }
+    this.logVerbose('hidden', false)
+    this.logVerbose('visible', true)
+    return logs
+  }
+
+  testPageProgress(): string[] {
+    const logs: string[] = []
+    this.log = (message: string) => {
+      logs.push(message)
+    }
+    const progress = this.createProgress({json: false, verbose: false})
+    const handler = this.pageProgressHandler(progress, true, (info) => `page ${info.page}`)
+    handler({collected: 1, page: 0, rawCount: 1, total: 1})
+    return logs
+  }
+}
+
 describe('WireboundCommand', () => {
   let tempRoot: string
   let originalCwd: string
@@ -35,5 +60,12 @@ describe('WireboundCommand', () => {
       expect(error).to.be.instanceOf(CLIError)
       expect(String(error)).to.contain('Profile not found: missing')
     }
+  })
+
+  it('logs verbose output and forwards page progress when enabled', () => {
+    const command = new VerboseHarness([], {} as ConstructorParameters<typeof WireboundCommand>[1])
+
+    expect(command.testLogging()).to.deep.equal(['visible'])
+    expect(command.testPageProgress()).to.deep.equal(['page 0'])
   })
 })

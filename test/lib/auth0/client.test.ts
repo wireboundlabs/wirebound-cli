@@ -109,6 +109,31 @@ describe('Auth0Client', () => {
     expect(nock.pendingMocks()).to.have.length(0)
   })
 
+  it('searchLogs marks truncated results when limit fills a full page', async () => {
+    mockToken()
+    nock(BASE)
+      .get('/api/v2/logs')
+      .query(true)
+      .reply(200, Array.from({length: 50}, (_, index) => ({
+        date: '2026-06-01T00:00:00.000Z',
+        description: `entry-${index}`,
+        log_id: `log-${index}`,
+        type: 'f',
+      })))
+
+    const pages: number[] = []
+    const client = new Auth0Client(config, new RateLimiter({rps: 10}))
+    const {logs, truncated} = await client.searchLogs('type:f', {
+      limit: 50,
+      onPage: ({page}) => pages.push(page),
+    })
+
+    expect(logs).to.have.length(50)
+    expect(truncated).to.equal(true)
+    expect(pages).to.deep.equal([0])
+    expect(nock.pendingMocks()).to.have.length(0)
+  })
+
   it('findDuplicateEmails groups users with shared email', async () => {
     mockToken()
     nock(BASE)
@@ -207,6 +232,18 @@ describe('Auth0Client', () => {
 
     expect(total).to.equal(1)
     expect(members[0].user_id).to.equal('auth0|1')
+    expect(nock.pendingMocks()).to.have.length(0)
+  })
+
+  it('addOrganizationMembers posts new members', async () => {
+    mockToken()
+    nock(BASE)
+      .post('/api/v2/organizations/org_1/members', {members: ['auth0|1']})
+      .reply(204)
+
+    const client = new Auth0Client(config, new RateLimiter({rps: 10}))
+    await client.addOrganizationMembers('org_1', ['auth0|1'])
+
     expect(nock.pendingMocks()).to.have.length(0)
   })
 

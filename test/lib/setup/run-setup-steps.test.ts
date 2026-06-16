@@ -12,8 +12,8 @@ import {
   logNextSteps,
   resolveSetDefault,
   verifySetupCredentials,
-} from '@/lib/setup/run-setup-steps'
-import {type RunSetupOptions} from '@/lib/setup/run-setup-types'
+  type RunSetupOptions,
+} from '@/lib/setup/run-setup'
 
 describe('runSetup steps', () => {
   let tempRoot: string
@@ -45,7 +45,8 @@ describe('runSetup steps', () => {
 
   describe('confirmOverwriteIfNeeded', () => {
     it('allows setup when profile file does not exist', async () => {
-      expect(await confirmOverwriteIfNeeded(baseOptions(), tempRoot)).to.equal(true)
+      const configPath = repoProfilePath(tempRoot, 'dev')
+      expect(await confirmOverwriteIfNeeded(baseOptions(), configPath)).to.equal(true)
     })
 
     it('allows setup when force is enabled', async () => {
@@ -55,7 +56,12 @@ describe('runSetup steps', () => {
         AUTH0_MGMT_CLIENT_SECRET: 'old',
       })
 
-      expect(await confirmOverwriteIfNeeded(baseOptions({force: true}), tempRoot)).to.equal(true)
+      expect(
+        await confirmOverwriteIfNeeded(
+          baseOptions({force: true}),
+          repoProfilePath(tempRoot, 'dev'),
+        ),
+      ).to.equal(true)
     })
 
     it('throws when profile exists and no confirm handler is provided', async () => {
@@ -66,7 +72,7 @@ describe('runSetup steps', () => {
       })
 
       try {
-        await confirmOverwriteIfNeeded(baseOptions(), tempRoot)
+        await confirmOverwriteIfNeeded(baseOptions(), repoProfilePath(tempRoot, 'dev'))
         expect.fail('Expected confirmOverwriteIfNeeded to throw')
       } catch (error) {
         expect(error).to.be.instanceOf(CLIError)
@@ -92,7 +98,7 @@ describe('runSetup steps', () => {
               return true
             },
           }),
-          tempRoot,
+          configPath,
         ),
       ).to.equal(true)
       expect(seenPath).to.equal(configPath)
@@ -127,6 +133,17 @@ describe('runSetup steps', () => {
       ).to.equal(true)
       expect(seenProfile).to.equal('dev')
       expect(seenDir).to.equal(tempRoot)
+    })
+
+    it('returns false when confirmSetDefault declines', async () => {
+      expect(
+        await resolveSetDefault(
+          baseOptions({
+            confirmSetDefault: async () => false,
+          }),
+          tempRoot,
+        ),
+      ).to.equal(false)
     })
   })
 

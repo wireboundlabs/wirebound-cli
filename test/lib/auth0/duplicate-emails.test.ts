@@ -50,4 +50,15 @@ describe('groupUsersByEmail', () => {
       ]),
     ).to.deep.equal([])
   })
+
+  it('sorts duplicate groups by count then email', () => {
+    const groups = groupUsersByEmail([
+      {email: 'b@example.com', user_id: 'auth0|1'},
+      {email: 'b@example.com', user_id: 'auth0|2'},
+      {email: 'a@example.com', user_id: 'auth0|3'},
+      {email: 'a@example.com', user_id: 'auth0|4'},
+    ])
+
+    expect(groups.map((group) => group.email)).to.deep.equal(['a@example.com', 'b@example.com'])
+  })
 })

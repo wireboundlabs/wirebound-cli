@@ -220,6 +220,7 @@ describe('output formatters', () => {
 
     expect(output).to.contain('acme-corp')
     expect(output).to.contain('user@example.com')
+    expect(output).to.contain('User')
   })
 
   it('formatOrganizationMembersResult notes truncated member lists', () => {
@@ -353,6 +354,10 @@ describe('output formatters', () => {
     expect(buildLogQuery({from: '2026-06-01'})).to.equal('date:[2026-06-01 TO *]')
     expect(buildLogQuery({to: '2026-06-12'})).to.equal('date:[* TO 2026-06-12]')
     expect(buildLogQuery({})).to.equal('')
+    expect(buildLogQuery({query: 'type:f'})).to.equal('(type:f)')
+    expect(buildLogQuery({from: '2026-06-01', to: '2026-06-12'})).to.equal(
+      'date:[2026-06-01 TO 2026-06-12]',
+    )
   })
 
   it('parseUserFields splits custom columns', () => {

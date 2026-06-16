@@ -38,6 +38,15 @@ describe('progress', () => {
 
       expect(createProgressContext({json: false, verbose: false}).enabled).to.equal(true)
     })
+
+    it('disables progress when stderr is not a TTY', () => {
+      Object.defineProperty(process.stderr, 'isTTY', {
+        configurable: true,
+        value: false,
+      })
+
+      expect(createProgressContext({json: false, verbose: false}).enabled).to.equal(false)
+    })
   })
 
   describe('noop reporter', () => {

@@ -11,7 +11,7 @@ export interface RateLimiterOptions {
   onRetry?: (message: string) => void
 }
 
-function parseRateLimitResetMs(headers: Headers): number {
+export function parseRateLimitResetMs(headers: Headers): number {
   const resetHeader = headers.get('x-ratelimit-reset')
   if (!resetHeader) return 1000
 
@@ -21,7 +21,7 @@ function parseRateLimitResetMs(headers: Headers): number {
   return Math.max(0, resetEpoch * 1000 - Date.now())
 }
 
-function defaultAuth0RetryDelayMs(error: unknown): number | undefined {
+export function defaultAuth0RetryDelayMs(error: unknown): number | undefined {
   if (!(error instanceof HttpError) || error.status !== 429) {
     return undefined
   }

@@ -86,6 +86,12 @@ describe('resolveAuth0Config', () => {
         domain: 'tenant.example.com',
       }),
     ).to.throw(CLIError, /client ID/)
+    expect(() =>
+      resolveAuth0Config({
+        clientId: 'cid',
+        clientSecret: 'secret',
+      }),
+    ).to.throw(CLIError, /domain/)
   })
 
   it('throws when required fields are missing', () => {

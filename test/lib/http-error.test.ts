@@ -39,4 +39,15 @@ describe('http-error', () => {
       expect((error as HttpError).body).to.equal('nope')
     }
   })
+
+  it('assertOk uses an empty body in the default error message', async () => {
+    const response = new Response('', {status: 403, statusText: 'Forbidden'})
+
+    try {
+      await assertOk(response)
+      expect.fail('expected assertOk to throw')
+    } catch (error) {
+      expect((error as HttpError).message).to.equal('HTTP 403: ')
+    }
+  })
 })

@@ -72,6 +72,13 @@ describe('config profile', () => {
     })
   })
 
+  it('loadConfigFile skips undefined parsed values', () => {
+    const path = join(tempRoot, 'empty-value.env')
+    writeFileSync(path, 'EMPTY=\nPRESENT=ok\n', 'utf8')
+
+    expect(loadConfigFile(path)).to.deep.equal({EMPTY: '', PRESENT: 'ok'})
+  })
+
   it('resolveProfileVars loads named repo profile', () => {
     writeRepoProfile(tempRoot, 'test', {
       AUTH0_DOMAIN: 'test.example.com',
@@ -250,6 +257,16 @@ describe('config profile', () => {
     expect(formatConfigFile({AUTH0_DOMAIN: 'tenant.example.com'})).to.contain(
       'repo-local config (do not commit)',
     )
+    expect(
+      formatConfigFile(
+        {
+          AUTH0_DOMAIN: 'tenant.example.com',
+          AUTH0_MGMT_CLIENT_ID: 'cid',
+          AUTH0_MGMT_CLIENT_SECRET: 'secret',
+        },
+        'dev',
+      ),
+    ).to.contain('# Profile: dev')
   })
 
   it('ensureGitignore returns false when gitignore is missing', () => {
@@ -263,6 +280,8 @@ describe('config profile', () => {
     expect(ensureGitignore(tempRoot)).to.equal(false)
     writeFileSync(gitignorePath, '.wirebound/**\n', 'utf8')
     expect(ensureGitignore(tempRoot)).to.equal(false)
+    writeFileSync(gitignorePath, '.wirebound/*\n', 'utf8')
+    expect(ensureGitignore(tempRoot)).to.equal(false)
   })
 
   it('ensureGitignore appends entry without trailing newline in gitignore', () => {
@@ -271,6 +290,22 @@ describe('config profile', () => {
 
     expect(ensureGitignore(tempRoot)).to.equal(true)
     expect(readFileSync(gitignorePath, 'utf8')).to.contain(`${GITIGNORE_ENTRY}\n`)
+  })
+
+  it('resolveProfileVars lists available repo profiles in not-found errors', () => {
+    writeRepoProfile(tempRoot, 'dev', {
+      AUTH0_DOMAIN: 'dev.example.com',
+      AUTH0_MGMT_CLIENT_ID: 'cid',
+      AUTH0_MGMT_CLIENT_SECRET: 'secret',
+    })
+    process.chdir(tempRoot)
+
+    try {
+      resolveProfileVars('missing')
+      expect.fail('Expected resolveProfileVars to throw')
+    } catch (error) {
+      expect(String(error)).to.contain('Available repo profiles: dev')
+    }
   })
 })
 

@@ -66,6 +66,20 @@ describe('paginate', () => {
     expect(result.items).to.deep.equal(['only-item'])
   })
 
+  it('stops when a short page indicates the final page', async () => {
+    const result = await paginate({
+      fetchPage: async (page) => ({
+        items: page === 0 ? ['a', 'b'] : ['should-not-fetch'],
+        page,
+        perPage: 5,
+        total: 2,
+      }),
+      perPage: 5,
+    })
+
+    expect(result.items).to.deep.equal(['a', 'b'])
+  })
+
   it('invokes onPage for each fetched page', async () => {
     const pages: number[] = []
 
