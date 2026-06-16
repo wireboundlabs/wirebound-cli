@@ -63,4 +63,30 @@ describe('auth0 users duplicate-emails', () => {
     expect(result.duplicates[0].count).to.equal(2)
     expect(nock.pendingMocks()).to.have.length(0)
   })
+
+  it('renders human output without json', async () => {
+    mockToken()
+    nock(BASE)
+      .get('/api/v2/users')
+      .query(true)
+      .reply(200, {
+        length: 2,
+        limit: 100,
+        start: 0,
+        total: 2,
+        users: [
+          {email: 'shared@example.com', user_id: 'auth0|1'},
+          {email: 'shared@example.com', user_id: 'auth0|2'},
+        ],
+      })
+
+    const {stdout} = await runCommand([
+      'auth0:users:duplicate-emails',
+      ...authFlags,
+    ])
+
+    expect(stdout).to.contain('shared@example.com')
+    expect(stdout).to.contain('duplicates=1')
+    expect(nock.pendingMocks()).to.have.length(0)
+  })
 })

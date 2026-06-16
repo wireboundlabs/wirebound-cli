@@ -162,4 +162,50 @@ describe('Auth0Client', () => {
     expect(organizations[0].name).to.equal('acme-corp')
     expect(nock.pendingMocks()).to.have.length(0)
   })
+
+  it('getOrganizationById fetches a single organization', async () => {
+    mockToken()
+    nock(BASE)
+      .get('/api/v2/organizations/org_1')
+      .reply(200, {id: 'org_1', name: 'acme-corp'})
+
+    const client = new Auth0Client(config, new RateLimiter({rps: 10}))
+    const org = await client.getOrganizationById('org_1')
+
+    expect(org.name).to.equal('acme-corp')
+    expect(nock.pendingMocks()).to.have.length(0)
+  })
+
+  it('listOrganizationMembers returns paginated members', async () => {
+    mockToken()
+    nock(BASE)
+      .get('/api/v2/organizations/org_1/members')
+      .query(true)
+      .reply(200, {
+        length: 1,
+        limit: 100,
+        members: [{email: 'user@example.com', user_id: 'auth0|1'}],
+        start: 0,
+        total: 1,
+      })
+
+    const client = new Auth0Client(config, new RateLimiter({rps: 10}))
+    const {members, total} = await client.listOrganizationMembers('org_1')
+
+    expect(total).to.equal(1)
+    expect(members[0].user_id).to.equal('auth0|1')
+    expect(nock.pendingMocks()).to.have.length(0)
+  })
+
+  it('removeOrganizationMembers deletes members', async () => {
+    mockToken()
+    nock(BASE)
+      .delete('/api/v2/organizations/org_1/members', {members: ['auth0|1']})
+      .reply(204)
+
+    const client = new Auth0Client(config, new RateLimiter({rps: 10}))
+    await client.removeOrganizationMembers('org_1', ['auth0|1'])
+
+    expect(nock.pendingMocks()).to.have.length(0)
+  })
 })

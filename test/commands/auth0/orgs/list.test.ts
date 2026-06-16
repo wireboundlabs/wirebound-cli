@@ -41,4 +41,24 @@ describe('auth0 orgs list', () => {
     expect(result.organizations[0].name).to.equal('acme-corp')
     expect(nock.pendingMocks()).to.have.length(0)
   })
+
+  it('renders human output without json', async () => {
+    mockToken()
+    nock(BASE)
+      .get('/api/v2/organizations')
+      .query(true)
+      .reply(200, {
+        length: 1,
+        limit: 100,
+        organizations: [{display_name: 'Acme Corp', id: 'org_1', name: 'acme-corp'}],
+        start: 0,
+        total: 1,
+      })
+
+    const {stdout} = await runCommand(['auth0:orgs:list', ...authFlags])
+
+    expect(stdout).to.contain('acme-corp')
+    expect(stdout).to.contain('organization(s)')
+    expect(nock.pendingMocks()).to.have.length(0)
+  })
 })

@@ -7,6 +7,7 @@ import {
   formatLogSearchResult,
   formatOrgMemberMutationResult,
   formatOrganizationListResult,
+  formatOrganizationMembersResult,
   formatUserGetResult,
   formatUserMutationResult,
   formatUserSearchResult,
@@ -104,6 +105,18 @@ describe('output formatters', () => {
     expect(output).to.contain('duplicates=1')
   })
 
+  it('formatDuplicateEmailsResult notes truncation and empty duplicates', () => {
+    const truncated = formatDuplicateEmailsResult({
+      duplicateCount: 0,
+      duplicates: [],
+      scanned: 1000,
+      truncated: true,
+    })
+
+    expect(truncated).to.contain('truncated')
+    expect(truncated).to.contain('duplicates=0')
+  })
+
   it('formatOrganizationListResult renders organizations', () => {
     const output = formatOrganizationListResult({
       organizations: [{display_name: 'Acme', id: 'org_1', name: 'acme-corp'}],
@@ -113,6 +126,25 @@ describe('output formatters', () => {
 
     expect(output).to.contain('acme-corp')
     expect(output).to.contain('org_1')
+
+    const truncated = formatOrganizationListResult({
+      organizations: [],
+      total: 10,
+      truncated: true,
+    })
+    expect(truncated).to.contain('more results may exist')
+  })
+
+  it('formatOrganizationMembersResult renders members', () => {
+    const output = formatOrganizationMembersResult({
+      members: [{email: 'user@example.com', name: 'User', user_id: 'auth0|1'}],
+      org: {id: 'org_1', name: 'acme-corp'},
+      total: 1,
+      truncated: false,
+    })
+
+    expect(output).to.contain('acme-corp')
+    expect(output).to.contain('user@example.com')
   })
 
   it('formatOrgMemberMutationResult renders add dry-run', () => {
@@ -126,6 +158,20 @@ describe('output formatters', () => {
     })
 
     expect(output).to.contain('Would add to org acme-corp')
+  })
+
+  it('formatOrgMemberMutationResult renders confirmed remove with errors', () => {
+    const output = formatOrgMemberMutationResult({
+      action: 'remove',
+      candidates: [{email: 'user@example.com', user_id: 'auth0|1'}],
+      dryRun: false,
+      errors: [{message: 'failed', user_id: 'auth0|1'}],
+      org: {id: 'org_1', name: 'acme-corp'},
+      updated: [],
+    })
+
+    expect(output).to.contain('Removed 0 user(s) from org acme-corp')
+    expect(output).to.contain('auth0|1: failed')
   })
 
   it('formatHumanResult renders delete dry-run output', () => {
