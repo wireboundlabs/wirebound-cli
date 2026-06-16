@@ -52,9 +52,9 @@
     "dev": "./bin/dev.js",
     "lint": "eslint",
     "prepack": "npm run build && oclif manifest",
-    "test": "mocha --forbid-only \"test/**/*.test.ts\"",
+    "test": "NODE_ENV=test mocha --forbid-only \"test/**/*.test.ts\"",
     "pretest:coverage": "npm run build",
-    "test:coverage": "c8 mocha --forbid-only \"test/**/*.test.ts\"",
+    "test:coverage": "NODE_ENV=test c8 mocha --forbid-only \"test/**/*.test.ts\"",
     "fallow": "fallow",
     "version": "oclif readme && git add README.md"
   },

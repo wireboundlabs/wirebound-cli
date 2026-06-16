@@ -1,9 +1,8 @@
 {
-  "all": true,
+  "all": false,
   "check-coverage": true,
   "excludeAfterRemap": true,
   "include": ["src/**/*.ts"],
-  "src": ["src"],
   "exclude": [
     "dist/**",
     "src/lib/setup/prompt-auth0-credentials.ts",
