@@ -5,6 +5,7 @@
     "outDir": "dist",
     "rootDir": "src",
     "sourceMap": true,
+    "inlineSources": true,
     "strict": true,
     "target": "es2022",
     "moduleResolution": "bundler",

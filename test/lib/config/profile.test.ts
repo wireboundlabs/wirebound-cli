@@ -226,6 +226,29 @@ describe('config profile', () => {
     expect(listRepoProfiles(join(tempRoot, 'missing'))).to.deep.equal([])
   })
 
+  it('listRepoProfiles returns empty when profiles directory is missing', () => {
+    mkdirSync(join(tempRoot, '.wirebound'), {recursive: true})
+    expect(listRepoProfiles(tempRoot)).to.deep.equal([])
+  })
+
+  it('findRepoConfig returns undefined outside a repo', () => {
+    const outside = mkdtempSync(join(tmpdir(), 'wirebound-outside-'))
+    try {
+      expect(findRepoConfig(outside)).to.equal(undefined)
+    } finally {
+      rmSync(outside, {force: true, recursive: true})
+    }
+  })
+
+  it('readRepoDefaultProfile returns undefined outside a repo', () => {
+    const outside = mkdtempSync(join(tmpdir(), 'wirebound-outside-'))
+    try {
+      expect(readRepoDefaultProfile(outside)).to.equal(undefined)
+    } finally {
+      rmSync(outside, {force: true, recursive: true})
+    }
+  })
+
   it('readRepoDefaultProfile ignores blank default file', () => {
     const defaultDir = join(tempRoot, '.wirebound')
     mkdirSync(defaultDir, {recursive: true})
@@ -300,6 +323,37 @@ describe('config profile', () => {
 
     expect(ensureGitignore(tempRoot)).to.equal(true)
     expect(readFileSync(gitignorePath, 'utf8')).to.contain(`${GITIGNORE_ENTRY}\n`)
+  })
+
+  it('resolveProfileVars loads global profile when repo profile is missing', () => {
+    const home = mkdtempSync(join(tmpdir(), 'wirebound-home-'))
+    const originalHome = process.env.HOME
+    process.env.HOME = home
+
+    const globalDir = join(home, '.config', 'wirebound', 'profiles')
+    mkdirSync(globalDir, {recursive: true})
+    writeFileSync(
+      join(globalDir, 'shared.env'),
+      'AUTH0_DOMAIN=global.example.com\nAUTH0_MGMT_CLIENT_ID=gid\nAUTH0_MGMT_CLIENT_SECRET=gsecret\n',
+      'utf8',
+    )
+
+    process.chdir(tempRoot)
+
+    try {
+      expect(resolveProfileVars('shared')).to.deep.equal({
+        AUTH0_DOMAIN: 'global.example.com',
+        AUTH0_MGMT_CLIENT_ID: 'gid',
+        AUTH0_MGMT_CLIENT_SECRET: 'gsecret',
+      })
+    } finally {
+      if (originalHome === undefined) {
+        delete process.env.HOME
+      } else {
+        process.env.HOME = originalHome
+      }
+      rmSync(home, {force: true, recursive: true})
+    }
   })
 
   it('resolveProfileVars lists available repo profiles in not-found errors', () => {

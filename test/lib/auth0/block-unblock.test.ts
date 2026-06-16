@@ -142,6 +142,50 @@ describe('runBlockUnblockCommand', () => {
     expect(logs.join('\n')).to.contain('Would unblock')
   })
 
+  it('logs resolved tenant and rate limits in verbose mode', async () => {
+    mockToken()
+    nock(BASE)
+      .get('/api/v2/users-by-email')
+      .query({email: 'user@example.com'})
+      .reply(200, [sampleUser])
+
+    const logs: string[] = []
+    const verboseLogs: string[] = []
+    await runBlockUnblockCommand(
+      {
+        exit: () => {},
+        log: (message) => logs.push(message),
+        logVerbose: (message, verbose) => {
+          if (verbose) verboseLogs.push(message)
+        },
+      },
+      {
+        action: 'block',
+        blocked: true,
+        flags: {
+          confirm: false,
+          domain: DOMAIN,
+          email: 'user@example.com',
+          json: false,
+          verbose: true,
+          'client-id': 'cid',
+          'client-secret': 'secret',
+        },
+        resolveConfig: async (flags) =>
+          resolveAuth0Config({
+            clientId: flags['client-id'],
+            clientSecret: flags['client-secret'],
+            domain: flags.domain,
+            profile: flags.profile,
+            rps: flags.rps,
+          }),
+      },
+    )
+
+    expect(verboseLogs).to.include(`Auth0 tenant: ${DOMAIN}`)
+    expect(verboseLogs.some((line) => line.startsWith('Rate limits: plan=free,'))).to.equal(true)
+  })
+
   it('exits non-zero when confirm returns errors', async () => {
     mockToken()
     nock(BASE)

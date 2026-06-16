@@ -5,6 +5,7 @@ import {join} from 'node:path'
 
 import {Auth0Command} from '@/lib/commands/auth0-command'
 import {writeRepoProfile} from '@/lib/config/profile'
+import {type Auth0Config} from '@/lib/config/auth0'
 
 class TestAuth0Command extends Auth0Command {
   async resolveForProfile(
@@ -20,6 +21,10 @@ class TestAuth0Command extends Auth0Command {
   ) {
     await this.loadConfigVars(profile)
     return this.resolveConfig({profile, ...flags})
+  }
+
+  logResolvedConfigForTest(config: Auth0Config, verbose: boolean) {
+    this.logResolvedConfig(config, verbose)
   }
 }
 
@@ -61,5 +66,48 @@ describe('Auth0Command', () => {
       rps: 4,
       tenantEnvironment: 'non-production',
     })
+  })
+
+  it('logResolvedConfig logs tenant and rate limits when verbose', () => {
+    const command = new TestAuth0Command([], {} as ConstructorParameters<typeof Auth0Command>[1])
+    const logs: string[] = []
+    command.log = (message: string) => logs.push(message)
+
+    command.logResolvedConfigForTest(
+      {
+        clientId: 'cid',
+        clientSecret: 'secret',
+        domain: 'tenant.example.com',
+        plan: 'enterprise',
+        rps: 2,
+        tenantEnvironment: 'non-production',
+      },
+      true,
+    )
+
+    expect(logs).to.deep.equal([
+      'Auth0 tenant: tenant.example.com',
+      'Rate limits: plan=enterprise, tenant=non-production, 2 req/s global',
+    ])
+  })
+
+  it('logResolvedConfig stays quiet when verbose is false', () => {
+    const command = new TestAuth0Command([], {} as ConstructorParameters<typeof Auth0Command>[1])
+    const logs: string[] = []
+    command.log = (message: string) => logs.push(message)
+
+    command.logResolvedConfigForTest(
+      {
+        clientId: 'cid',
+        clientSecret: 'secret',
+        domain: 'tenant.example.com',
+        plan: 'free',
+        rps: 2,
+        tenantEnvironment: 'production',
+      },
+      false,
+    )
+
+    expect(logs).to.deep.equal([])
   })
 })

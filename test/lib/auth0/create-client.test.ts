@@ -11,6 +11,23 @@ describe('createAuth0Client', () => {
     nock.cleanAll()
   })
 
+  it('createAuth0Client works without optional retry hook', async () => {
+    nock(BASE)
+      .post('/oauth/token')
+      .reply(200, {access_token: 'token', expires_in: 86400, token_type: 'Bearer'})
+
+    const client = createAuth0Client({
+      clientId: 'cid',
+      clientSecret: 'secret',
+      domain: DOMAIN,
+      plan: 'free',
+      rps: 2,
+      tenantEnvironment: 'production',
+    })
+
+    await client.getToken()
+  })
+
   it('createTestAuth0Client accepts overrides and retry hooks', async () => {
     const retries: string[] = []
     nock(BASE)
@@ -63,5 +80,23 @@ describe('createAuth0Client', () => {
     await client.getToken()
 
     expect(retries.length).to.be.greaterThan(0)
+  })
+
+  it('createTestAuth0Client works without optional retry hook', async () => {
+    nock(BASE)
+      .post('/oauth/token')
+      .reply(200, {access_token: 'token', expires_in: 86400, token_type: 'Bearer'})
+    nock(BASE)
+      .get('/api/v2/users/auth0%7C1')
+      .reply(200, {email: 'a@example.com', user_id: 'auth0|1'})
+
+    const client = createTestAuth0Client({
+      clientId: 'cid',
+      clientSecret: 'secret',
+      domain: DOMAIN,
+    })
+    const user = await client.getUserById('auth0|1')
+
+    expect(user.user_id).to.equal('auth0|1')
   })
 })

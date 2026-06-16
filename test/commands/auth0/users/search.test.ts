@@ -68,6 +68,8 @@ describe('auth0 users search', () => {
     ])
 
     expect(stdout).to.contain('Page 0')
+    expect(stdout).to.contain('Auth0 tenant: tenant.example.com')
+    expect(stdout).to.contain('Rate limits: plan=free, 2 req/s global')
     expect(stdout).to.contain('user@example.com')
     expect(nock.pendingMocks()).to.have.length(0)
   })
