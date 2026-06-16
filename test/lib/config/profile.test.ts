@@ -19,8 +19,8 @@ import {
   resolveProfileVars,
   writeRepoDefaultProfile,
   writeRepoProfile,
-} from '../../../src/lib/config/profile.js'
-import {listSetupProfiles, runSetup} from '../../../src/lib/setup/run-setup.js'
+} from '@/lib/config/profile'
+import {listSetupProfiles, runSetup} from '@/lib/setup/run-setup'
 
 describe('config profile', () => {
   let tempRoot: string

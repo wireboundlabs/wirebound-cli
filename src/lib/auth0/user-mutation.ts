@@ -1,7 +1,7 @@
-import {Auth0Client} from './client.js'
-import {type Auth0User} from './types.js'
-import {toCandidateUser, type UserMutationResult} from '../output.js'
-import {resolveUsers, validateTargetFlags} from './resolve-users.js'
+import {Auth0Client} from './client'
+import {type Auth0User} from './types'
+import {toCandidateUser, type UserMutationResult} from '@/lib/output'
+import {resolveUsers, validateTargetFlags} from './resolve-users'
 
 export async function runUserBlockMutation(
   client: Auth0Client,

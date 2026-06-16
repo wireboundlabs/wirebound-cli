@@ -1,6 +1,6 @@
 import {expect} from 'chai'
 
-import {HttpError, assertOk} from '../../src/lib/http-error.js'
+import {HttpError, assertOk} from '@/lib/http-error'
 
 describe('http-error', () => {
   it('HttpError stores status, headers, and body', () => {

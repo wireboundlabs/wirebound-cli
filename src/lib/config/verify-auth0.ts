@@ -1,4 +1,4 @@
-import {type Auth0Config} from './auth0.js'
+import {type Auth0Config} from './auth0'
 
 export async function verifyAuth0Credentials(config: Auth0Config): Promise<void> {
   const baseUrl = `https://${config.domain}`

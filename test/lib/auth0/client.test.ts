@@ -1,8 +1,8 @@
 import {expect} from 'chai'
 import nock from 'nock'
 
-import {Auth0Client} from '../../../src/lib/auth0/client.js'
-import {RateLimiter} from '../../../src/lib/rate-limiter.js'
+import {Auth0Client} from '@/lib/auth0/client'
+import {RateLimiter} from '@/lib/rate-limiter'
 
 const DOMAIN = 'tenant.example.com'
 const BASE = `https://${DOMAIN}`
@@ -106,6 +106,60 @@ describe('Auth0Client', () => {
 
     expect(logs).to.have.length(1)
     expect(logs[0].type).to.equal('f')
+    expect(nock.pendingMocks()).to.have.length(0)
+  })
+
+  it('findDuplicateEmails groups users with shared email', async () => {
+    mockToken()
+    nock(BASE)
+      .get('/api/v2/users')
+      .query(true)
+      .reply(200, {
+        length: 2,
+        limit: 100,
+        start: 0,
+        total: 2,
+        users: [
+          {
+            email: 'shared@example.com',
+            identities: [{connection: 'google-oauth2', provider: 'google-oauth2', user_id: '1'}],
+            user_id: 'google-oauth2|1',
+          },
+          {
+            email: 'shared@example.com',
+            identities: [{connection: 'auth0', provider: 'auth0', user_id: '2'}],
+            user_id: 'auth0|2',
+          },
+        ],
+      })
+
+    const client = new Auth0Client(config, new RateLimiter({rps: 10}))
+    const {duplicates, scanned} = await client.findDuplicateEmails()
+
+    expect(scanned).to.equal(2)
+    expect(duplicates).to.have.length(1)
+    expect(duplicates[0].email).to.equal('shared@example.com')
+    expect(nock.pendingMocks()).to.have.length(0)
+  })
+
+  it('listOrganizations returns paginated organizations', async () => {
+    mockToken()
+    nock(BASE)
+      .get('/api/v2/organizations')
+      .query(true)
+      .reply(200, {
+        length: 1,
+        limit: 100,
+        organizations: [{id: 'org_1', name: 'acme-corp'}],
+        start: 0,
+        total: 1,
+      })
+
+    const client = new Auth0Client(config, new RateLimiter({rps: 10}))
+    const {organizations, total} = await client.listOrganizations()
+
+    expect(total).to.equal(1)
+    expect(organizations[0].name).to.equal('acme-corp')
     expect(nock.pendingMocks()).to.have.length(0)
   })
 })

@@ -1,7 +1,7 @@
 import {Flags} from '@oclif/core'
 
-import {resolveAuth0Config, type Auth0Config} from '../config/auth0.js'
-import {WireboundCommand} from './wirebound-command.js'
+import {resolveAuth0Config, type Auth0Config} from '@/lib/config/auth0'
+import {WireboundCommand} from './wirebound-command'
 
 export abstract class Auth0Command extends WireboundCommand {
   static baseFlags = {

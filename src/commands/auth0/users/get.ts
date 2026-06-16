@@ -1,10 +1,10 @@
 import {Flags} from '@oclif/core'
 import {CLIError} from '@oclif/core/errors'
 
-import {Auth0Client} from '../../../lib/auth0/client.js'
-import {formatUserGetResult} from '../../../lib/output.js'
-import {Auth0Command} from '../../../lib/commands/auth0-command.js'
-import {RateLimiter} from '../../../lib/rate-limiter.js'
+import {Auth0Client} from '@/lib/auth0/client'
+import {formatUserGetResult} from '@/lib/output'
+import {Auth0Command} from '@/lib/commands/auth0-command'
+import {RateLimiter} from '@/lib/rate-limiter'
 
 export default class Auth0UsersGet extends Auth0Command {
   static override description = 'Get an Auth0 user by email or user ID'

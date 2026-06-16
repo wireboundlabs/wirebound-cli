@@ -1,4 +1,4 @@
-import {type Auth0User} from './types.js'
+import {type Auth0User} from './types'
 
 export function isGoogleOnlyUser(user: Auth0User): boolean {
   const ids = user.identities ?? []

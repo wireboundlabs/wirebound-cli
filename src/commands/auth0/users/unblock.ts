@@ -1,5 +1,5 @@
-import {Auth0Command} from '../../../lib/commands/auth0-command.js'
-import {blockUnblockBaseFlags, runBlockUnblockCommand} from '../../../lib/auth0/block-unblock.js'
+import {Auth0Command} from '@/lib/commands/auth0-command'
+import {blockUnblockBaseFlags, runBlockUnblockCommand} from '@/lib/auth0/block-unblock'
 
 export default class Auth0UsersUnblock extends Auth0Command {
   static override description =

@@ -6,7 +6,7 @@ import {runCommand} from '@oclif/test'
 import {expect} from 'chai'
 import nock from 'nock'
 
-import {writeRepoDefaultProfile, writeRepoProfile} from '../../../src/lib/config/profile.js'
+import {writeRepoDefaultProfile, writeRepoProfile} from '@/lib/config/profile'
 
 const DOMAIN = 'tenant.example.com'
 const BASE = `https://${DOMAIN}`

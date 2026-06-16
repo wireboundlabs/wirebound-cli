@@ -20,10 +20,13 @@ Required Management API scopes for current commands:
 
 | Scope | Used by |
 |-------|---------|
-| `read:users` | `users search`, `users get`, block/unblock dry-run, `delete-google-users` |
+| `read:users` | `users search`, `users get`, `users duplicate-emails`, block/unblock dry-run, `delete-google-users`, org member add/remove dry-run |
 | `update:users` | `users block --confirm`, `users unblock --confirm` |
 | `delete:users` | `delete-google-users --confirm` |
 | `read:logs` | `logs search` |
+| `read:organizations` | `orgs list`, `orgs members list`, org member add/remove dry-run |
+| `create:organization_members` | `orgs members add --confirm` |
+| `delete:organization_members` | `orgs members remove --confirm` |
 
 ---
 
@@ -54,6 +57,9 @@ On the next screen (or **APIs** tab of the new app):
    - **`update:users`**
    - **`delete:users`**
    - **`read:logs`**
+   - **`read:organizations`** (for org commands)
+   - **`create:organization_members`** (for `orgs members add --confirm`)
+   - **`delete:organization_members`** (for `orgs members remove --confirm`)
 3. **Authorize** / save
 
 Grant only what you need. For dry-runs you still need `read:users`; block/unblock require `update:users`; deletes require `delete:users`; log search requires `read:logs`.
@@ -211,6 +217,83 @@ Exactly one of `--email`, `--id`, or `--query` is required.
 
 ---
 
+### `wirebound auth0 users duplicate-emails`
+
+Find users that share the same email across different Auth0 user records (e.g. Google + database accounts with the same address).
+
+```bash
+wirebound auth0 users duplicate-emails
+wirebound auth0 users duplicate-emails --limit 500 --json
+```
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--limit` | unlimited | Max users to scan (Auth0 search cap: 1000) |
+
+Use this before `delete-google-users` to detect email collisions across connections.
+
+---
+
+### `wirebound auth0 orgs list`
+
+List organizations in the tenant.
+
+```bash
+wirebound auth0 orgs list
+wirebound auth0 orgs list --limit 20 --json
+```
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--limit` | unlimited | Max organizations to return |
+
+---
+
+### `wirebound auth0 orgs members list`
+
+List members of an organization.
+
+```bash
+wirebound auth0 orgs members list --org-name acme-corp
+wirebound auth0 orgs members list --org-id org_abc123 --json
+```
+
+| Flag | Description |
+|------|-------------|
+| `--org-id` | Organization ID |
+| `--org-name` | Organization name |
+| `--limit` | Max members to return |
+
+Exactly one of `--org-id` or `--org-name` is required.
+
+---
+
+### `wirebound auth0 orgs members add` / `wirebound auth0 orgs members remove`
+
+Add or remove users from an organization by email, user ID, or search query. Dry-run by default.
+
+```bash
+wirebound auth0 orgs members add --org-name acme-corp --email user@example.com
+wirebound auth0 orgs members add --org-id org_abc --query 'email:*@acme.com' --confirm
+wirebound auth0 orgs members remove --org-name acme-corp --email user@example.com --confirm
+```
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--org-id` | — | Organization ID |
+| `--org-name` | — | Organization name |
+| `--email` | — | User email address |
+| `--id` | — | Auth0 user ID |
+| `--query` / `-q` | — | Lucene v3 search query |
+| `--limit` | unlimited | Max users when using `--query` |
+| `--confirm` | false | Apply the change (default is dry-run) |
+
+Exactly one of `--org-id` or `--org-name` is required. Exactly one of `--email`, `--id`, or `--query` is required.
+
+Already-member users are skipped on add; non-members are skipped on remove.
+
+---
+
 ### `wirebound auth0 logs search`
 
 Search tenant logs with Lucene query syntax.
@@ -238,7 +321,7 @@ Deletes Auth0 users that have **exactly one** identity and that identity’s pro
 |----------|--------|
 | Includes | Users with only a Google social login |
 | Skips | Users with 2+ identities (e.g. Google + database linked) |
-| Does not check | Whether another database user shares the same email |
+| Does not check | Whether another database user shares the same email — use `users duplicate-emails` first |
 | Default mode | **Dry-run** — lists candidates only |
 | Destructive mode | `--confirm` — deletes listed users |
 
@@ -334,7 +417,7 @@ The CLI defaults to `--rps 2` and queues every API call (token, list, delete). O
 | `Missing required Auth0 configuration` | Add repo config or `export AUTH0_*` — see [CONFIGURATION.md](../CONFIGURATION.md) |
 | `Profile not found: .../profiles/foo.env` | Create the global profile or use `wirebound setup` in the repo |
 | HTTP **401** | Wrong client ID/secret; rotate secret in Auth0 and update profile |
-| HTTP **403** | M2M app missing `read:users` or `delete:users` on Management API |
+| HTTP **403** | M2M app missing required Management API scopes — see scope table above |
 | HTTP **429** | Rate limited — CLI retries; reduce `--rps` or wait |
 | `0 google-only user(s)` | No matching users, or all Google users are linked to another identity |
 

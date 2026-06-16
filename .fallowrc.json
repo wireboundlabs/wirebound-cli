@@ -7,6 +7,11 @@
     "src/commands/auth0/users/get.ts",
     "src/commands/auth0/users/block.ts",
     "src/commands/auth0/users/unblock.ts",
+    "src/commands/auth0/users/duplicate-emails.ts",
+    "src/commands/auth0/orgs/list.ts",
+    "src/commands/auth0/orgs/members/list.ts",
+    "src/commands/auth0/orgs/members/add.ts",
+    "src/commands/auth0/orgs/members/remove.ts",
     "src/commands/auth0/logs/search.ts"
   ],
   "health": {

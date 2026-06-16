@@ -1,7 +1,7 @@
 import {expect} from 'chai'
 
-import {HttpError} from '../../src/lib/http-error.js'
-import {RateLimiter} from '../../src/lib/rate-limiter.js'
+import {HttpError} from '@/lib/http-error'
+import {RateLimiter} from '@/lib/rate-limiter'
 
 describe('RateLimiter', () => {
   it('retries when getRetryDelayMs returns a delay', async () => {

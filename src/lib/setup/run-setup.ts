@@ -3,7 +3,7 @@ import {resolve} from 'node:path'
 
 import {CLIError} from '@oclif/core/errors'
 
-import {resolveAuth0Config} from '../config/auth0.js'
+import {resolveAuth0Config} from '@/lib/config/auth0'
 import {
   ensureGitignore,
   formatProfileList,
@@ -12,8 +12,8 @@ import {
   repoProfilePath,
   writeRepoDefaultProfile,
   writeRepoProfile,
-} from '../config/profile.js'
-import {verifyAuth0Credentials} from '../config/verify-auth0.js'
+} from '@/lib/config/profile'
+import {verifyAuth0Credentials} from '@/lib/config/verify-auth0'
 
 export interface Auth0Credentials {
   domain: string

@@ -1,7 +1,7 @@
 import {expect} from 'chai'
 
-import {isGoogleOnlyUser} from '../../../src/lib/auth0/filters.js'
-import {type Auth0User} from '../../../src/lib/auth0/types.js'
+import {isGoogleOnlyUser} from '@/lib/auth0/filters'
+import {type Auth0User} from '@/lib/auth0/types'
 
 function user(identities: Auth0User['identities']): Auth0User {
   return {identities, user_id: 'test'}

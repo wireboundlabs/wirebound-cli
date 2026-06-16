@@ -1,4 +1,5 @@
-import {type Auth0Log, type Auth0User} from './auth0/types.js'
+import {type Auth0Log, type Auth0Organization, type Auth0User} from '@/lib/auth0/types'
+import {type DuplicateEmailGroup} from '@/lib/auth0/duplicate-emails'
 
 export interface CandidateUser {
   user_id: string
@@ -34,6 +35,35 @@ export interface LogSearchResult {
   total: number
   truncated: boolean
   logs: Auth0Log[]
+}
+
+export interface DuplicateEmailsResult {
+  scanned: number
+  truncated: boolean
+  duplicateCount: number
+  duplicates: DuplicateEmailGroup[]
+}
+
+export interface OrganizationListResult {
+  total: number
+  truncated: boolean
+  organizations: Auth0Organization[]
+}
+
+export interface OrganizationMembersResult {
+  org: {id: string; name: string}
+  total: number
+  truncated: boolean
+  members: Auth0User[]
+}
+
+export interface OrgMemberMutationResult {
+  dryRun: boolean
+  action: 'add' | 'remove'
+  org: {id: string; name: string}
+  candidates: CandidateUser[]
+  updated: string[]
+  errors: Array<{user_id: string; message: string}>
 }
 
 export type UserTableColumn = keyof CandidateUser | 'name'
@@ -152,7 +182,7 @@ function formatSummary(result: DeleteCommandResult): string {
   return `Summary: found=${result.found}, eligible=${result.eligible}, deleted=${result.deleted.length}, errors=${result.errors.length}`
 }
 
-function formatErrors(errors: DeleteCommandResult['errors']): string[] {
+function formatErrors(errors: Array<{user_id: string; message: string}>): string[] {
   if (errors.length === 0) return []
 
   const lines = ['', 'Errors:']
@@ -263,6 +293,153 @@ export function formatLogSearchResult(result: LogSearchResult, query: string): s
     ...formatLogTable(result.logs),
     '',
     `Summary: returned=${result.logs.length}, truncated=${result.truncated}`,
+  ].join('\n')
+}
+
+function formatDuplicateEmailTable(duplicates: DuplicateEmailGroup[]): string[] {
+  if (duplicates.length === 0) return []
+
+  const rows = duplicates.map((group) => ({
+    count: String(group.count),
+    email: group.email,
+    providers: [...new Set(group.providers)].join(', '),
+    user_ids: group.user_ids.join(', '),
+  }))
+
+  const widths = {
+    count: Math.max(5, ...rows.map((row) => row.count.length), 'COUNT'.length),
+    email: Math.max(5, ...rows.map((row) => row.email.length), 'EMAIL'.length),
+    providers: Math.max(
+      9,
+      ...rows.map((row) => row.providers.length),
+      'PROVIDERS'.length,
+    ),
+    user_ids: Math.max(
+      8,
+      ...rows.map((row) => row.user_ids.length),
+      'USER_IDS'.length,
+    ),
+  }
+
+  const pad = (value: string, width: number) => value.padEnd(width)
+
+  return [
+    '',
+    [
+      pad('EMAIL', widths.email),
+      pad('COUNT', widths.count),
+      pad('USER_IDS', widths.user_ids),
+      pad('PROVIDERS', widths.providers),
+    ].join(' '),
+    ...rows.map((row) =>
+      [
+        pad(row.email, widths.email),
+        pad(row.count, widths.count),
+        pad(row.user_ids, widths.user_ids),
+        pad(row.providers, widths.providers),
+      ].join(' '),
+    ),
+  ]
+}
+
+export function formatDuplicateEmailsResult(result: DuplicateEmailsResult): string {
+  const truncatedNote = result.truncated
+    ? ' (truncated — Auth0 search returns at most 1000 results)'
+    : ''
+
+  return [
+    `Found ${result.duplicateCount} duplicate email(s) across ${result.scanned} scanned user(s)${truncatedNote}`,
+    ...formatDuplicateEmailTable(result.duplicates),
+    '',
+    `Summary: scanned=${result.scanned}, duplicates=${result.duplicateCount}, truncated=${result.truncated}`,
+  ].join('\n')
+}
+
+function formatOrganizationTable(organizations: Auth0Organization[]): string[] {
+  if (organizations.length === 0) return []
+
+  const rows = organizations.map((org) => ({
+    display_name: org.display_name ?? '',
+    id: org.id,
+    name: org.name,
+  }))
+
+  const widths = {
+    display_name: Math.max(
+      12,
+      ...rows.map((row) => row.display_name.length),
+      'DISPLAY_NAME'.length,
+    ),
+    id: Math.max(2, ...rows.map((row) => row.id.length), 'ID'.length),
+    name: Math.max(4, ...rows.map((row) => row.name.length), 'NAME'.length),
+  }
+
+  const pad = (value: string, width: number) => value.padEnd(width)
+
+  return [
+    '',
+    [
+      pad('ID', widths.id),
+      pad('NAME', widths.name),
+      pad('DISPLAY_NAME', widths.display_name),
+    ].join(' '),
+    ...rows.map((row) =>
+      [
+        pad(row.id, widths.id),
+        pad(row.name, widths.name),
+        pad(row.display_name, widths.display_name),
+      ].join(' '),
+    ),
+  ]
+}
+
+export function formatOrganizationListResult(result: OrganizationListResult): string {
+  const truncatedNote = result.truncated ? ' (more results may exist)' : ''
+
+  return [
+    `Found ${result.organizations.length} organization(s)${truncatedNote}`,
+    ...formatOrganizationTable(result.organizations),
+    '',
+    `Summary: total=${result.total}, returned=${result.organizations.length}, truncated=${result.truncated}`,
+  ].join('\n')
+}
+
+export function formatOrganizationMembersResult(
+  result: OrganizationMembersResult,
+): string {
+  const truncatedNote = result.truncated ? ' (more results may exist)' : ''
+
+  return [
+    `Organization: ${result.org.name} (${result.org.id})`,
+    `Found ${result.members.length} member(s)${truncatedNote}`,
+    ...formatUserTable(result.members, ['email', 'user_id', 'name']),
+    '',
+    `Summary: total=${result.total}, returned=${result.members.length}, truncated=${result.truncated}`,
+  ].join('\n')
+}
+
+export function formatOrgMemberMutationResult(result: OrgMemberMutationResult): string {
+  const verb = result.action === 'add' ? 'add to' : 'remove from'
+
+  const header = result.dryRun
+    ? `Would ${verb} org ${result.org.name}: ${result.candidates.length} user(s) (dry run — use --confirm to apply)`
+    : `${result.action === 'add' ? 'Added' : 'Removed'} ${result.updated.length} user(s) ${result.action === 'add' ? 'to' : 'from'} org ${result.org.name}`
+
+  const summary = result.dryRun
+    ? `Summary: org=${result.org.name}, candidates=${result.candidates.length}, would_update=${result.candidates.length}`
+    : `Summary: org=${result.org.name}, updated=${result.updated.length}, errors=${result.errors.length}`
+
+  const candidates: Auth0User[] = result.candidates.map((user) => ({
+    email: user.email,
+    user_id: user.user_id,
+  }))
+
+  return [
+    header,
+    ...formatUserTable(candidates, ['email', 'user_id']),
+    '',
+    summary,
+    ...formatErrors(result.errors),
   ].join('\n')
 }
 

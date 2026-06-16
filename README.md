@@ -152,8 +152,13 @@ export AUTH0_MGMT_CLIENT_SECRET=your-client-secret
 | `wirebound setup` | Connect a tenant — interactive credential setup (Auth0) |
 | `wirebound auth0 users search` | Search users with a Lucene v3 query |
 | `wirebound auth0 users get` | Get a user by email or user ID |
+| `wirebound auth0 users duplicate-emails` | Find users sharing the same email across records |
 | `wirebound auth0 users block` | Block users by email, ID, or query (dry-run by default) |
 | `wirebound auth0 users unblock` | Unblock users by email, ID, or query (dry-run by default) |
+| `wirebound auth0 orgs list` | List Auth0 organizations |
+| `wirebound auth0 orgs members list` | List members of an organization |
+| `wirebound auth0 orgs members add` | Add users to an organization (dry-run by default) |
+| `wirebound auth0 orgs members remove` | Remove users from an organization (dry-run by default) |
 | `wirebound auth0 logs search` | Search tenant logs with Lucene query syntax |
 | `wirebound auth0 delete-google-users` | Remove users with exactly one Google identity (dry-run by default) |
 

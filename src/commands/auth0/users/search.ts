@@ -1,14 +1,14 @@
 import {Flags} from '@oclif/core'
 
-import {Auth0Client} from '../../../lib/auth0/client.js'
+import {Auth0Client} from '@/lib/auth0/client'
 import {
   formatUserSearchResult,
   parseUserFields,
   projectUser,
   type UserSearchResult,
-} from '../../../lib/output.js'
-import {Auth0Command} from '../../../lib/commands/auth0-command.js'
-import {RateLimiter} from '../../../lib/rate-limiter.js'
+} from '@/lib/output'
+import {Auth0Command} from '@/lib/commands/auth0-command'
+import {RateLimiter} from '@/lib/rate-limiter'
 
 export default class Auth0UsersSearch extends Auth0Command {
   static override description = 'Search Auth0 users with a Lucene v3 query'

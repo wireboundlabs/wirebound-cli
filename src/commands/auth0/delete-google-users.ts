@@ -1,10 +1,10 @@
 import {Flags} from '@oclif/core'
 
-import {Auth0Client} from '../../lib/auth0/client.js'
-import {type Auth0User} from '../../lib/auth0/types.js'
-import {formatHumanResult, type DeleteCommandResult} from '../../lib/output.js'
-import {RateLimiter} from '../../lib/rate-limiter.js'
-import {Auth0Command} from '../../lib/commands/auth0-command.js'
+import {Auth0Client} from '@/lib/auth0/client'
+import {type Auth0User} from '@/lib/auth0/types'
+import {formatHumanResult, type DeleteCommandResult} from '@/lib/output'
+import {RateLimiter} from '@/lib/rate-limiter'
+import {Auth0Command} from '@/lib/commands/auth0-command'
 
 async function deleteEligibleUsers(
   client: Auth0Client,

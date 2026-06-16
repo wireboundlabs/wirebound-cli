@@ -1,8 +1,8 @@
 import {expect} from 'chai'
 
-import {Auth0Client} from '../../../src/lib/auth0/client.js'
-import {resolveUsers, validateTargetFlags} from '../../../src/lib/auth0/resolve-users.js'
-import {RateLimiter} from '../../../src/lib/rate-limiter.js'
+import {Auth0Client} from '@/lib/auth0/client'
+import {resolveUsers, validateTargetFlags} from '@/lib/auth0/resolve-users'
+import {RateLimiter} from '@/lib/rate-limiter'
 
 const config = {
   clientId: 'cid',

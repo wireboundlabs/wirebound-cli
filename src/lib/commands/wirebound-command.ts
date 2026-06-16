@@ -1,7 +1,7 @@
 import {Command, Flags} from '@oclif/core'
 import {CLIError} from '@oclif/core/errors'
 
-import {resolveProfileVars} from '../config/profile.js'
+import {resolveProfileVars} from '@/lib/config/profile'
 
 export abstract class WireboundCommand extends Command {
   static baseFlags = {

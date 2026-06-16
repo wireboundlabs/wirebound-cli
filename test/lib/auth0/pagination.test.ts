@@ -1,6 +1,6 @@
 import {expect} from 'chai'
 
-import {AUTH0_SEARCH_MAX_RESULTS, paginate} from '../../../src/lib/auth0/pagination.js'
+import {AUTH0_SEARCH_MAX_RESULTS, paginate} from '@/lib/auth0/pagination'
 
 describe('paginate', () => {
   it('collects all items when no limit is set', async () => {

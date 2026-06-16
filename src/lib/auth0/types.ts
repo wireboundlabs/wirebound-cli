@@ -48,3 +48,26 @@ export interface Auth0TokenResponse {
 export interface Auth0UserUpdate {
   blocked?: boolean
 }
+
+export interface Auth0Organization {
+  id: string
+  name: string
+  display_name?: string
+  metadata?: Record<string, unknown>
+}
+
+export interface Auth0OrganizationsResponse {
+  start: number
+  limit: number
+  length: number
+  total: number
+  organizations: Auth0Organization[]
+}
+
+export interface Auth0OrganizationMembersResponse {
+  start: number
+  limit: number
+  length: number
+  total: number
+  members: Auth0User[]
+}

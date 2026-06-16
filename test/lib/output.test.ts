@@ -2,14 +2,17 @@ import {expect} from 'chai'
 
 import {
   buildLogQuery,
+  formatDuplicateEmailsResult,
   formatHumanResult,
   formatLogSearchResult,
+  formatOrgMemberMutationResult,
+  formatOrganizationListResult,
   formatUserGetResult,
   formatUserMutationResult,
   formatUserSearchResult,
   parseUserFields,
   toCandidateUser,
-} from '../../src/lib/output.js'
+} from '@/lib/output'
 
 describe('output formatters', () => {
   it('formatUserGetResult handles empty results', () => {
@@ -80,6 +83,49 @@ describe('output formatters', () => {
     const output = formatLogSearchResult({logs: [], total: 0, truncated: false}, '')
 
     expect(output).to.contain('Query: (none)')
+  })
+
+  it('formatDuplicateEmailsResult renders duplicate groups', () => {
+    const output = formatDuplicateEmailsResult({
+      duplicateCount: 1,
+      duplicates: [
+        {
+          count: 2,
+          email: 'shared@example.com',
+          providers: ['google-oauth2', 'auth0'],
+          user_ids: ['google-oauth2|1', 'auth0|2'],
+        },
+      ],
+      scanned: 3,
+      truncated: false,
+    })
+
+    expect(output).to.contain('shared@example.com')
+    expect(output).to.contain('duplicates=1')
+  })
+
+  it('formatOrganizationListResult renders organizations', () => {
+    const output = formatOrganizationListResult({
+      organizations: [{display_name: 'Acme', id: 'org_1', name: 'acme-corp'}],
+      total: 1,
+      truncated: false,
+    })
+
+    expect(output).to.contain('acme-corp')
+    expect(output).to.contain('org_1')
+  })
+
+  it('formatOrgMemberMutationResult renders add dry-run', () => {
+    const output = formatOrgMemberMutationResult({
+      action: 'add',
+      candidates: [{email: 'user@example.com', user_id: 'auth0|1'}],
+      dryRun: true,
+      errors: [],
+      org: {id: 'org_1', name: 'acme-corp'},
+      updated: [],
+    })
+
+    expect(output).to.contain('Would add to org acme-corp')
   })
 
   it('formatHumanResult renders delete dry-run output', () => {

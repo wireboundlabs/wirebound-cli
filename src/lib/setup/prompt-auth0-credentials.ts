@@ -6,8 +6,8 @@ import {
   normalizeProfileName,
   readRepoDefaultProfile,
   validateProfileName,
-} from '../config/profile.js'
-import {type Auth0Credentials} from './run-setup.js'
+} from '@/lib/config/profile'
+import {type Auth0Credentials} from './run-setup'
 
 export async function promptProfileName(
   targetDir: string,

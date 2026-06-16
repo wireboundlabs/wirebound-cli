@@ -1,14 +1,14 @@
 import {Command, Flags} from '@oclif/core'
 import {resolve} from 'node:path'
 
-import {validateProfileName} from '../lib/config/profile.js'
+import {validateProfileName} from '@/lib/config/profile'
 import {
   promptAuth0Credentials,
   promptOverwrite,
   promptProfileName,
   promptSetDefault,
-} from '../lib/setup/prompt-auth0-credentials.js'
-import {listSetupProfiles, runSetup} from '../lib/setup/run-setup.js'
+} from '@/lib/setup/prompt-auth0-credentials'
+import {listSetupProfiles, runSetup} from '@/lib/setup/run-setup'
 
 export default class Setup extends Command {
   static description =

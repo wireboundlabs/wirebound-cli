@@ -1,16 +1,20 @@
-import {type Auth0Config} from '../config/auth0.js'
-import {assertOk} from '../http-error.js'
-import {RateLimiter} from '../rate-limiter.js'
-import {isGoogleOnlyUser} from './filters.js'
-import {paginate} from './pagination.js'
+import {type Auth0Config} from '@/lib/config/auth0'
+import {assertOk} from '@/lib/http-error'
+import {RateLimiter} from '@/lib/rate-limiter'
+import {groupUsersByEmail, type DuplicateEmailGroup} from './duplicate-emails'
+import {isGoogleOnlyUser} from './filters'
+import {paginate} from './pagination'
 import {
   type Auth0Log,
   type Auth0LogsResponse,
+  type Auth0Organization,
+  type Auth0OrganizationMembersResponse,
+  type Auth0OrganizationsResponse,
   type Auth0TokenResponse,
   type Auth0User,
   type Auth0UsersSearchResponse,
   type Auth0UserUpdate,
-} from './types.js'
+} from './types'
 
 export interface ListGoogleOnlyUsersOptions {
   limit?: number
@@ -23,6 +27,21 @@ export interface SearchUsersOptions {
 }
 
 export interface SearchLogsOptions {
+  limit?: number
+  onPage?: (info: {page: number; total: number; rawCount: number}) => void
+}
+
+export interface ListOrganizationsOptions {
+  limit?: number
+  onPage?: (info: {page: number; total: number; rawCount: number}) => void
+}
+
+export interface ListOrganizationMembersOptions {
+  limit?: number
+  onPage?: (info: {page: number; total: number; rawCount: number}) => void
+}
+
+export interface FindDuplicateEmailsOptions {
   limit?: number
   onPage?: (info: {page: number; total: number; rawCount: number}) => void
 }
@@ -212,6 +231,143 @@ export class Auth0Client {
       `/api/v2/users/${encodedId}`,
       await this.withAuth({method: 'DELETE'}),
     )
+  }
+
+  async findDuplicateEmails(
+    options: FindDuplicateEmailsOptions = {},
+  ): Promise<{duplicates: DuplicateEmailGroup[]; scanned: number; truncated: boolean}> {
+    const {total, truncated, users} = await this.searchUsers('email:*', {
+      limit: options.limit,
+      onPage: options.onPage,
+    })
+
+    const duplicates = groupUsersByEmail(users)
+    return {duplicates, scanned: users.length, truncated: truncated || total > users.length}
+  }
+
+  async listOrganizations(
+    options: ListOrganizationsOptions = {},
+  ): Promise<{organizations: Auth0Organization[]; total: number; truncated: boolean}> {
+    const result = await paginate<Auth0Organization>({
+      fetchPage: async (page, perPage) => {
+        const data = await this.fetchOrganizationsPage(page, perPage)
+        return {items: data.organizations, page, perPage, total: data.total}
+      },
+      limit: options.limit,
+      onPage: options.onPage,
+      perPage: 100,
+    })
+
+    return {
+      organizations: result.items,
+      total: result.total,
+      truncated: result.truncated,
+    }
+  }
+
+  async getOrganizationById(orgId: string): Promise<Auth0Organization> {
+    const encodedId = encodeURIComponent(orgId)
+    const response = await this.fetch(
+      `/api/v2/organizations/${encodedId}`,
+      await this.withAuth({method: 'GET'}),
+    )
+
+    return (await response.json()) as Auth0Organization
+  }
+
+  async getOrganizationByName(name: string): Promise<Auth0Organization> {
+    const encodedName = encodeURIComponent(name)
+    const response = await this.fetch(
+      `/api/v2/organizations/name/${encodedName}`,
+      await this.withAuth({method: 'GET'}),
+    )
+
+    return (await response.json()) as Auth0Organization
+  }
+
+  async listOrganizationMembers(
+    orgId: string,
+    options: ListOrganizationMembersOptions = {},
+  ): Promise<{members: Auth0User[]; total: number; truncated: boolean}> {
+    const result = await paginate<Auth0User>({
+      fetchPage: async (page, perPage) => {
+        const data = await this.fetchOrganizationMembersPage(orgId, page, perPage)
+        return {items: data.members, page, perPage, total: data.total}
+      },
+      limit: options.limit,
+      onPage: options.onPage,
+      perPage: 100,
+    })
+
+    return {members: result.items, total: result.total, truncated: result.truncated}
+  }
+
+  async listAllOrganizationMembers(
+    orgId: string,
+    options: Omit<ListOrganizationMembersOptions, 'limit'> = {},
+  ): Promise<Auth0User[]> {
+    const {members} = await this.listOrganizationMembers(orgId, options)
+    return members
+  }
+
+  async addOrganizationMembers(orgId: string, memberIds: string[]): Promise<void> {
+    const encodedId = encodeURIComponent(orgId)
+    await this.fetch(
+      `/api/v2/organizations/${encodedId}/members`,
+      await this.withAuth({
+        body: JSON.stringify({members: memberIds}),
+        method: 'POST',
+      }),
+    )
+  }
+
+  async removeOrganizationMembers(orgId: string, memberIds: string[]): Promise<void> {
+    const encodedId = encodeURIComponent(orgId)
+    await this.fetch(
+      `/api/v2/organizations/${encodedId}/members`,
+      await this.withAuth({
+        body: JSON.stringify({members: memberIds}),
+        method: 'DELETE',
+      }),
+    )
+  }
+
+  private async fetchOrganizationsPage(
+    page: number,
+    perPage: number,
+  ): Promise<Auth0OrganizationsResponse> {
+    const params = new URLSearchParams({
+      include_totals: 'true',
+      page: String(page),
+      per_page: String(perPage),
+    })
+
+    const response = await this.fetch(
+      `/api/v2/organizations?${params.toString()}`,
+      await this.withAuth({method: 'GET'}),
+    )
+
+    return (await response.json()) as Auth0OrganizationsResponse
+  }
+
+  private async fetchOrganizationMembersPage(
+    orgId: string,
+    page: number,
+    perPage: number,
+  ): Promise<Auth0OrganizationMembersResponse> {
+    const encodedId = encodeURIComponent(orgId)
+    const params = new URLSearchParams({
+      include_totals: 'true',
+      page: String(page),
+      per_page: String(perPage),
+    })
+
+    const response = await this.fetch(
+      `/api/v2/organizations/${encodedId}/members?${params.toString()}`,
+      await this.withAuth({method: 'GET'}),
+    )
+
+    return (await response.json()) as Auth0OrganizationMembersResponse
   }
 
   private async fetchUserSearchPage(

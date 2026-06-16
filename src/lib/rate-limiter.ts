@@ -1,6 +1,6 @@
 import Bottleneck from 'bottleneck'
 
-import {HttpError} from './http-error.js'
+import {HttpError} from '@/lib/http-error'
 
 export type GetRetryDelayMs = (error: unknown) => number | undefined
 

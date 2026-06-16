@@ -5,7 +5,7 @@ import {join} from 'node:path'
 import {runCommand} from '@oclif/test'
 import {expect} from 'chai'
 
-import {writeRepoDefaultProfile, writeRepoProfile} from '../../src/lib/config/profile.js'
+import {writeRepoDefaultProfile, writeRepoProfile} from '@/lib/config/profile'
 
 describe('setup', () => {
   it('lists repo-local profiles with --list', async () => {
