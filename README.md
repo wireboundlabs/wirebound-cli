@@ -1,4 +1,4 @@
-# wirebound — Auth0 CLI for user management, orgs, logs & tenant maintenance
+# wirebound — Auth0 Management API CLI for Users, Orgs, Logs & Tenant Maintenance
 
 [![npm version](https://img.shields.io/npm/v/@wireboundlabs/cli.svg)](https://www.npmjs.com/package/@wireboundlabs/cli)
 [![npm downloads](https://img.shields.io/npm/dm/@wireboundlabs/cli.svg)](https://www.npmjs.com/package/@wireboundlabs/cli)
@@ -10,9 +10,9 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![GitHub stars](https://img.shields.io/github/stars/wireboundlabs/wirebound-cli?style=social)](https://github.com/wireboundlabs/wirebound-cli/stargazers)
 
-**wirebound** is an **Auth0 CLI** for day-to-day **tenant maintenance** — search and block users, manage **Auth0 Organizations**, audit **tenant logs**, and run **bulk cleanup** from your terminal. Built on the **Auth0 Management API** with **dry-run by default**, **live progress bars**, **JSON for CI**, and **per-environment profiles** (dev, staging, production).
+**wirebound** is the **Auth0 CLI** for operating live tenants — **bulk user search & block**, **Auth0 Organizations** management, **tenant log** forensics, and safe cleanup from your terminal. Built on the **Auth0 Management API** with **dry-run by default**, live progress, **JSON for CI**, and **multi-environment profiles** (dev, staging, production).
 
-Install from npm as **`@wireboundlabs/cli`**. Run it as **`wirebound`**.
+Install **`@wireboundlabs/cli`** · run **`wirebound`**
 
 ```bash
 npm install -g @wireboundlabs/cli
@@ -20,7 +20,7 @@ wirebound setup --profile dev --default
 wirebound auth0 users search --query 'email:*@yourcompany.com'
 ```
 
-**Looking for:** Auth0 user management CLI · Auth0 bulk operations · Auth0 org member management · Auth0 log search · safe Auth0 automation · multi-tenant Auth0 profiles
+**Auth0 CLI for:** user management · bulk block/unblock · organization members · tenant log search · duplicate-email audits · safe automation · dev/staging/prod profiles
 
 ---
 
