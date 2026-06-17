@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.4.3] - 2026-06-17
+
+### Documentation
+
+- README: rename CI checklist to **CI best practices** and use plain bullets instead of GitHub task-list checkboxes
+- README, CONFIGURATION, and Auth0 vendor guide: clarify that `AUTH0_PLAN` on paid tenants unlocks your subscription's higher rate limits (CLI defaults to free-tier 2 req/s), rather than primarily avoiding HTTP 429s
+- CONFIGURATION and Auth0 vendor guide: HTTP 429 troubleshooting now focuses on reducing `--rps` and automatic retries
+
 ## [0.4.2] - 2026-06-17
 
 ### Added

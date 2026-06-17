@@ -263,10 +263,10 @@ Requires **Node.js 24+**.
     node-version: 24
 
 # Pin a version (recommended in CI)
-- run: npm install -g @wireboundlabs/cli@0.4.2
+- run: npm install -g @wireboundlabs/cli@0.4.3
 
 # Or run without a global install
-- run: npx @wireboundlabs/cli@0.4.2 auth0 users search --help
+- run: npx @wireboundlabs/cli@0.4.3 auth0 users search --help
 ```
 
 ### 3. Run commands with `--json`
