@@ -453,7 +453,7 @@ AUTH0_PLAN=essentials-professional
 | `Profile not found: .../profiles/foo.env` | Create the global profile or use `wirebound setup` in the repo |
 | HTTP **401** | Wrong client ID/secret; rotate secret in Auth0 and update profile |
 | HTTP **403** | M2M app missing required Management API scopes — see scope table above |
-| HTTP **429** | Rate limited — CLI retries; set `AUTH0_PLAN` for paid tenants, or reduce `--rps` |
+| HTTP **429** | Rate limited — CLI retries automatically; reduce `--rps` or wait for retries |
 | `0 google-only user(s)` | No matching users, or all Google users are linked to another identity |
 
 ---

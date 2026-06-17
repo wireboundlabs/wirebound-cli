@@ -198,7 +198,7 @@ Example: repo config sets `AUTH0_DOMAIN=prod.auth0.com`, but you pass `--domain 
 
 ## Rate limits
 
-wirebound queues Auth0 Management API calls to match [Auth0’s documented limits](https://auth0.com/docs/troubleshoot/customer-support/operational-policies/rate-limit-policy). **Free tenants need no configuration** (defaults to 2 req/s). Set your plan once if you hit HTTP 429 on a paid tenant:
+wirebound queues Auth0 Management API calls to match [Auth0’s documented limits](https://auth0.com/docs/troubleshoot/customer-support/operational-policies/rate-limit-policy). **Free tenants need no configuration** (defaults to 2 req/s). On paid plans, set your plan so the CLI can use your subscription's higher limits instead of the default free-tier throttle:
 
 | Your Auth0 subscription | Set in profile |
 |-------------------------|----------------|
@@ -311,7 +311,7 @@ Always **dry-run in CI first**; add `--confirm` only when the pipeline is truste
 | Config ignored in subdirectory | No `.wirebound/config.env` in parent tree | Run setup at repo root |
 | `HTTP 401` | Wrong client secret or ID | Regenerate secret in Auth0 dashboard |
 | `HTTP 403` | Missing API scopes | Add `read:users` + `delete:users` on M2M app |
-| `HTTP 429` | Rate limit | CLI retries automatically; set `AUTH0_PLAN`, reduce `--rps`, or wait |
+| `HTTP 429` | Rate limit | CLI retries automatically; reduce `--rps` or wait |
 | Command hangs then retries | Normal on 429 | Use `--verbose` to see wait messages |
 | Only 1000 users seen | Auth0 search cap | Documented limit; use `--limit` to cap per run |
 

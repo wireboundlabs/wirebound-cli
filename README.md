@@ -364,14 +364,14 @@ Use a separate job, **`workflow_dispatch`** (manual run), and a GitHub **environ
 
 Run the dry-run step in PR checks; gate `--confirm` behind environment approval or a protected branch.
 
-### CI checklist
+### CI best practices
 
-- [ ] M2M app scoped to least privilege for the job
-- [ ] Secrets in CI vault, not in repo or workflow logs
-- [ ] `--json` on every command you parse or archive
-- [ ] Dry-run or read-only commands in scheduled jobs
-- [ ] `--confirm` only in approved, manual, or explicitly trusted pipelines
-- [ ] Set `AUTH0_PLAN` (and `AUTH0_TENANT_ENV` if applicable) on paid tenants to avoid unnecessary 429s
+- Scope the M2M app to least privilege for the job
+- Store secrets in your CI vault, not in the repo or workflow logs
+- Use `--json` on every command you parse or archive
+- Run dry-run or read-only commands in scheduled jobs
+- Use `--confirm` only in approved, manual, or explicitly trusted pipelines
+- Set `AUTH0_PLAN` (and `AUTH0_TENANT_ENV` if applicable) on paid tenants so commands use your plan's rate limits (defaults to free-tier 2 req/s)
 
 More examples: [docs/CONFIGURATION.md#ci--automation](docs/CONFIGURATION.md#ci--automation)
 
