@@ -14,10 +14,10 @@ wirebound setup --profile dev --default
 wirebound setup --profile production
 
 # 3. Dry-run (safe — lists candidates, deletes nothing)
-wirebound auth0 delete-google-users
+wirebound auth0 users cleanup-google-orphans
 
 # 4. Delete after you review the list
-wirebound auth0 delete-google-users --confirm
+wirebound auth0 users cleanup-google-orphans --confirm
 ```
 
 If step 3 prints users instead of an error, you are configured correctly.
@@ -68,14 +68,14 @@ The CLI walks up from your current directory until it finds `.wirebound/`. Comma
 
 ```bash
 # Explicit profile
-wirebound auth0 delete-google-users --profile test
+wirebound auth0 users cleanup-google-orphans --profile test
 
 # Shell default for the session
 export WIREBOUND_PROFILE=production
-wirebound auth0 delete-google-users
+wirebound auth0 users cleanup-google-orphans
 
 # Repo default (.wirebound/default) when neither is set
-wirebound auth0 delete-google-users
+wirebound auth0 users cleanup-google-orphans
 ```
 
 List configured profiles:
@@ -144,11 +144,11 @@ AUTH0_MGMT_CLIENT_SECRET=your-secret-here-use-the-auth0-dashboard-value
 ### Using a global profile
 
 ```bash
-wirebound auth0 delete-google-users --profile acme
+wirebound auth0 users cleanup-google-orphans --profile acme
 
 # Default profile via environment (set once in ~/.zshrc)
 export WIREBOUND_PROFILE=acme
-wirebound auth0 delete-google-users
+wirebound auth0 users cleanup-google-orphans
 ```
 
 ---
@@ -162,7 +162,7 @@ export AUTH0_DOMAIN=acme.us.auth0.com
 export AUTH0_MGMT_CLIENT_ID=your-client-id
 export AUTH0_MGMT_CLIENT_SECRET=your-client-secret
 
-wirebound auth0 delete-google-users
+wirebound auth0 users cleanup-google-orphans
 ```
 
 Oclif also reads these when resolving `--domain`, `--client-id`, and `--client-secret` flags, so `--help` documents the mapping.
@@ -236,7 +236,7 @@ Short version:
 ### Missing config
 
 ```bash
-wirebound auth0 delete-google-users
+wirebound auth0 users cleanup-google-orphans
 ```
 
 If nothing is configured, you should see:
@@ -250,7 +250,7 @@ Fix: run `wirebound setup` in the repo or export the three `AUTH0_*` variables.
 ### Profile not found
 
 ```bash
-wirebound auth0 delete-google-users --profile nonexistent
+wirebound auth0 users cleanup-google-orphans --profile nonexistent
 ```
 
 ```text
@@ -262,7 +262,7 @@ Fix: create the file or fix the profile name.
 ### Successful dry-run
 
 ```bash
-wirebound auth0 delete-google-users --verbose
+wirebound auth0 users cleanup-google-orphans --verbose
 ```
 
 You should see token + user list activity (or “0 google-only users” if none match). **No deletes** unless you pass `--confirm`.
@@ -283,7 +283,7 @@ env:
   AUTH0_DOMAIN: ${{ secrets.AUTH0_DOMAIN }}
   AUTH0_MGMT_CLIENT_ID: ${{ secrets.AUTH0_MGMT_CLIENT_ID }}
   AUTH0_MGMT_CLIENT_SECRET: ${{ secrets.AUTH0_MGMT_CLIENT_SECRET }}
-run: wirebound auth0 delete-google-users --json
+run: wirebound auth0 users cleanup-google-orphans --json
 ```
 
 Always **dry-run in CI first**; add `--confirm` only when the pipeline is trusted and reviewed.

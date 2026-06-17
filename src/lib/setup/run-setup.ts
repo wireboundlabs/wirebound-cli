@@ -98,11 +98,11 @@ export function logNextSteps(
 ): void {
   log('')
   log('Next steps:')
-  log(`  wirebound auth0 delete-google-users --profile ${profileName}   # dry-run (safe)`)
+  log(`  wirebound auth0 users cleanup-google-orphans --profile ${profileName}   # dry-run (safe)`)
   if (!shouldSetDefault) {
     log(`  export WIREBOUND_PROFILE=${profileName}   # or run setup with --default`)
   } else {
-    log('  wirebound auth0 delete-google-users   # uses default profile')
+    log('  wirebound auth0 users cleanup-google-orphans   # uses default profile')
   }
   log('')
   log(

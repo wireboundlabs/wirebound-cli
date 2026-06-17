@@ -35,6 +35,8 @@ const databaseOnlyUser = {
   user_id: 'auth0|def',
 }
 
+const authFlags = ['--domain', DOMAIN, '--client-id', 'cid', '--client-secret', 'secret']
+
 function mockToken(): void {
   nock(BASE)
     .post('/oauth/token')
@@ -72,7 +74,7 @@ async function runWithRepoProfile(
   }
 }
 
-describe('auth0 delete-google-users', () => {
+describe('auth0 users cleanup-google-orphans', () => {
   let originalCwd: string
 
   beforeEach(() => {
@@ -89,13 +91,8 @@ describe('auth0 delete-google-users', () => {
     mockUserSearch([googleOnlyUser, linkedUser, databaseOnlyUser])
 
     const {stdout} = await runCommand([
-      'auth0:delete-google-users',
-      '--domain',
-      DOMAIN,
-      '--client-id',
-      'cid',
-      '--client-secret',
-      'secret',
+      'auth0:users:cleanup-google-orphans',
+      ...authFlags,
     ])
 
     expect(stdout).to.contain('solo@gmail.com')
@@ -111,13 +108,8 @@ describe('auth0 delete-google-users', () => {
     mockUserSearch([googleOnlyUser, linkedUser, databaseOnlyUser])
 
     const {stdout} = await runCommand([
-      'auth0:delete-google-users',
-      '--domain',
-      DOMAIN,
-      '--client-id',
-      'cid',
-      '--client-secret',
-      'secret',
+      'auth0:users:cleanup-google-orphans',
+      ...authFlags,
       '--json',
     ])
 
@@ -139,7 +131,7 @@ describe('auth0 delete-google-users', () => {
     const tempRoot = mkdtempSync(join(tmpdir(), 'wirebound-auth0-'))
     const result = await runWithRepoProfile(
       tempRoot,
-      ['auth0:delete-google-users', '--json'],
+      ['auth0:users:cleanup-google-orphans', '--json'],
       () => {
         writeRepoProfile(tempRoot, 'dev', {
           AUTH0_DOMAIN: DOMAIN,
@@ -158,7 +150,7 @@ describe('auth0 delete-google-users', () => {
     const tempRoot = mkdtempSync(join(tmpdir(), 'wirebound-auth0-'))
     const result = await runWithRepoProfile(
       tempRoot,
-      ['auth0:delete-google-users', '--profile', 'production', '--json'],
+      ['auth0:users:cleanup-google-orphans', '--profile', 'production', '--json'],
       () => {
         writeRepoProfile(tempRoot, 'production', {
           AUTH0_DOMAIN: DOMAIN,
@@ -181,13 +173,8 @@ describe('auth0 delete-google-users', () => {
       .reply(204)
 
     const {stdout} = await runCommand([
-      'auth0:delete-google-users',
-      '--domain',
-      DOMAIN,
-      '--client-id',
-      'cid',
-      '--client-secret',
-      'secret',
+      'auth0:users:cleanup-google-orphans',
+      ...authFlags,
       '--confirm',
       '--json',
     ])
@@ -205,13 +192,8 @@ describe('auth0 delete-google-users', () => {
     nock(BASE).delete('/api/v2/users/google-oauth2%7C123').reply(500, 'fail')
 
     const {stdout, error} = await runCommand([
-      'auth0:delete-google-users',
-      '--domain',
-      DOMAIN,
-      '--client-id',
-      'cid',
-      '--client-secret',
-      'secret',
+      'auth0:users:cleanup-google-orphans',
+      ...authFlags,
       '--confirm',
       '--json',
     ])
@@ -221,5 +203,44 @@ describe('auth0 delete-google-users', () => {
     expect(result.errors).to.have.length(1)
     expect(result.errors[0].user_id).to.equal('google-oauth2|123')
     expect(error).to.not.equal(undefined)
+  })
+
+  it('primary command does not emit alias deprecation warning', async () => {
+    mockToken()
+    mockUserSearch([googleOnlyUser])
+
+    const {stderr} = await runCommand([
+      'auth0:users:cleanup-google-orphans',
+      ...authFlags,
+      '--json',
+    ])
+
+    expect(stderr).not.to.contain('deprecated')
+  })
+
+  it('auth0 delete-google-users alias runs the same command', async () => {
+    mockToken()
+    mockUserSearch([googleOnlyUser, linkedUser, databaseOnlyUser])
+
+    const originalArgv = process.argv
+    process.argv = ['node', 'wirebound', 'auth0', 'delete-google-users', ...authFlags, '--json']
+
+    try {
+      const {stdout, stderr} = await runCommand([
+        'auth0:delete-google-users',
+        ...authFlags,
+        '--json',
+      ])
+
+      const result = JSON.parse(stdout) as {eligible: number; dryRun: boolean}
+      expect(result.dryRun).to.equal(true)
+      expect(result.eligible).to.equal(1)
+      expect(stderr).to.contain('auth0 delete-google-users')
+      expect(stderr).to.contain('deprecated')
+      expect(stderr).to.contain('auth0 users cleanup-google-orphans')
+      expect(nock.pendingMocks()).to.have.length(0)
+    } finally {
+      process.argv = originalArgv
+    }
   })
 })

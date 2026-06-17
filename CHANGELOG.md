@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.4.2] - 2026-06-17
+
+### Added
+
+- `wirebound auth0 users cleanup-google-orphans` — clearer name for removing Auth0 users with exactly one Google identity (dry-run by default)
+
+### Changed
+
+- `wirebound auth0 delete-google-users` is now an alias for `auth0 users cleanup-google-orphans` (behavior unchanged; `--confirm` still required to delete)
+- Invoking `auth0 delete-google-users` prints a deprecation warning pointing to `auth0 users cleanup-google-orphans`
+- README: star-the-repo call-to-action for discoverability
+
+### Documentation
+
+- Updated command examples across README, CONFIGURATION, and Auth0 vendor docs to use the new primary path
+
 ## [0.4.0] - 2026-06-16
 
 ### Added

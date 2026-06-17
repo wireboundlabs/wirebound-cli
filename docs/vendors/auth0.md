@@ -28,9 +28,9 @@ Required Management API scopes for current commands:
 
 | Scope | Used by |
 |-------|---------|
-| `read:users` | `users search`, `users get`, `users duplicate-emails`, block/unblock dry-run, `delete-google-users`, org member add/remove dry-run |
+| `read:users` | `users search`, `users get`, `users duplicate-emails`, block/unblock dry-run, `users cleanup-google-orphans`, org member add/remove dry-run |
 | `update:users` | `users block --confirm`, `users unblock --confirm` |
-| `delete:users` | `delete-google-users --confirm` |
+| `delete:users` | `users cleanup-google-orphans --confirm` |
 | `read:logs` | `logs search` |
 | `read:organizations` | `orgs list`, `orgs members list`, org member add/remove dry-run |
 | `create:organization_members` | `orgs members add --confirm` |
@@ -106,7 +106,7 @@ echo dev > .wirebound/default
 ### 5. Verify with a dry-run
 
 ```bash
-wirebound auth0 delete-google-users --verbose
+wirebound auth0 users cleanup-google-orphans --verbose
 ```
 
 Expected:
@@ -145,7 +145,7 @@ Profile/env vars (`AUTH0_PLAN`, `AUTH0_TENANT_ENV`, `AUTH0_RPS`) are usually eas
 ```bash
 cd ~/repos/customer-acme
 wirebound setup
-wirebound auth0 delete-google-users
+wirebound auth0 users cleanup-google-orphans
 ```
 
 File: `.wirebound/config.env` (auto-discovered from cwd upward)
@@ -153,9 +153,9 @@ File: `.wirebound/config.env` (auto-discovered from cwd upward)
 ### B. Global profile file
 
 ```bash
-wirebound auth0 delete-google-users --profile acme
+wirebound auth0 users cleanup-google-orphans --profile acme
 # or with WIREBOUND_PROFILE=acme:
-wirebound auth0 delete-google-users
+wirebound auth0 users cleanup-google-orphans
 ```
 
 File: `~/.config/wirebound/profiles/acme.env`
@@ -167,7 +167,7 @@ export AUTH0_DOMAIN=acme.us.auth0.com
 export AUTH0_MGMT_CLIENT_ID=...
 export AUTH0_MGMT_CLIENT_SECRET=...
 
-wirebound auth0 delete-google-users
+wirebound auth0 users cleanup-google-orphans
 ```
 
 Works in CI — inject vars from your secrets store.
@@ -175,7 +175,7 @@ Works in CI — inject vars from your secrets store.
 ### D. CLI flags
 
 ```bash
-wirebound auth0 delete-google-users \
+wirebound auth0 users cleanup-google-orphans \
   --domain acme.us.auth0.com \
   --client-id '...' \
   --client-secret '...'
@@ -259,7 +259,7 @@ wirebound auth0 users duplicate-emails --limit 500 --json
 |------|---------|-------------|
 | `--limit` | unlimited | Max users to scan (Auth0 search cap: 1000) |
 
-Use this before `delete-google-users` to detect email collisions across connections.
+Use this before `users cleanup-google-orphans` to detect email collisions across connections.
 
 ---
 
@@ -342,9 +342,11 @@ wirebound auth0 logs search --from 2026-06-01 --to 2026-06-12 --query 'type:f'
 
 ---
 
-### `wirebound auth0 delete-google-users`
+### `wirebound auth0 users cleanup-google-orphans`
 
-Deletes Auth0 users that have **exactly one** identity and that identity’s provider is `google-oauth2`.
+Cleans up Auth0 users that have **exactly one** identity and that identity’s provider is `google-oauth2`.
+
+> **Alias:** `wirebound auth0 users cleanup-google-orphans` (deprecated since 0.4.2)
 
 | Behavior | Detail |
 |----------|--------|
@@ -360,16 +362,16 @@ Rationale: orphan Google users from failed linking should be removed; the post-l
 
 ```bash
 # Safe preview (default)
-wirebound auth0 delete-google-users
+wirebound auth0 users cleanup-google-orphans
 
 # Preview with pagination / rate-limit logs
-wirebound auth0 delete-google-users --verbose
+wirebound auth0 users cleanup-google-orphans --verbose
 
 # Scripting
-wirebound auth0 delete-google-users --json
+wirebound auth0 users cleanup-google-orphans --json
 
 # Delete at most 50 users, 2 requests/sec
-wirebound auth0 delete-google-users --confirm --limit 50 --rps 2
+wirebound auth0 users cleanup-google-orphans --confirm --limit 50 --rps 2
 ```
 
 #### Human output (dry-run)

@@ -36,15 +36,19 @@ async function deleteEligibleUsers(
   return {deleted, errors}
 }
 
-export default class Auth0DeleteGoogleUsers extends Auth0Command {
+export default class Auth0UsersCleanupGoogleOrphans extends Auth0Command {
+  static aliases = ['auth0:delete-google-users']
+
+  static deprecateAliases = true
+
   static override description =
-    'Delete Auth0 users with exactly one google-oauth2 identity (dry-run by default)'
+    'Clean up Auth0 users with exactly one google-oauth2 identity (dry-run by default)'
 
   static override examples = [
-    '<%= config.bin %> auth0 delete-google-users --profile acme',
-    '<%= config.bin %> auth0 delete-google-users --domain tenant.us.auth0.com --client-id ID --client-secret SECRET',
-    '<%= config.bin %> auth0 delete-google-users --profile acme --confirm',
-    '<%= config.bin %> auth0 delete-google-users --profile acme --limit 10 --json',
+    '<%= config.bin %> auth0 users cleanup-google-orphans --profile acme',
+    '<%= config.bin %> auth0 users cleanup-google-orphans --domain tenant.us.auth0.com --client-id ID --client-secret SECRET',
+    '<%= config.bin %> auth0 users cleanup-google-orphans --profile acme --confirm',
+    '<%= config.bin %> auth0 users cleanup-google-orphans --profile acme --limit 10 --json',
   ]
 
   static override flags = {
@@ -59,7 +63,7 @@ export default class Auth0DeleteGoogleUsers extends Auth0Command {
   }
 
   public async run(): Promise<void> {
-    const {flags} = await this.parse(Auth0DeleteGoogleUsers)
+    const {flags} = await this.parse(Auth0UsersCleanupGoogleOrphans)
     const config = await this.resolveConfig(flags)
 
     const client = createAuth0Client(config, {
