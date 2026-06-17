@@ -52,3 +52,42 @@ npm run test:coverage
 - Do not commit unless asked.
 - Keep diffs focused; no drive-by refactors.
 - PRs should note test plan and coverage impact when touching `src/`.
+
+## Releases & changelog
+
+GitHub release bodies come from **`CHANGELOG.md`**, not GitHub’s auto-generated PR summary. The release workflow (`.github/workflows/release.yml`) extracts the section for the tagged version and publishes it. If that section is missing, the release job fails.
+
+### Keep release notes current
+
+**Every user-facing change** (features, fixes, deprecations, CLI flag changes, docs that affect operators) must get a bullet under the appropriate heading in `CHANGELOG.md` in the **same PR** as the change — do not defer changelog updates to release time.
+
+Use [Keep a Changelog](https://keepachangelog.com/) headings:
+
+- `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`, `Documentation`
+
+### Cut a release
+
+1. Ensure `CHANGELOG.md` has a section for the new version:
+
+   ```markdown
+   ## [0.4.4] - 2026-06-17
+
+   ### Added
+   - ...
+   ```
+
+2. Set `package.json` `"version"` to the same semver (no `v` prefix).
+3. Commit on `main`, then tag and push:
+
+   ```bash
+   git tag v0.4.4
+   git push origin v0.4.4
+   ```
+
+4. The **Release** workflow runs on `v*` tags: lint, test, build, `npm publish`, then creates/updates the GitHub release with the matching `CHANGELOG.md` section plus a compare link to the previous tag.
+
+**Checks:** tag must match `package.json`; `CHANGELOG.md` must contain `## [X.Y.Z] - …` for that version.
+
+### Fix a release that already shipped with empty notes
+
+Edit the release on GitHub (**Releases → select version → Edit**) and paste the section from `CHANGELOG.md`, or delete the release/tag and re-push the tag after `CHANGELOG.md` is correct (only if npm republish policy allows — prefer manual edit for published versions).

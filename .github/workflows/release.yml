@@ -30,6 +30,32 @@ jobs:
 
       - run: npm publish --access public
 
+      - name: Extract release notes from CHANGELOG
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          if [ "$(node -p "require('./package.json').version")" != "$VERSION" ]; then
+            echo "::error::Tag v${VERSION} does not match package.json version"
+            exit 1
+          fi
+          awk -v ver="$VERSION" '
+            /^## \[/ {
+              if (found) exit
+              if ($0 ~ "\\[" ver "\\]") found=1
+            }
+            found { print }
+          ' CHANGELOG.md > release-notes.md
+          if [ ! -s release-notes.md ]; then
+            echo "::error::No CHANGELOG.md section for version ${VERSION}"
+            exit 1
+          fi
+          PREV_TAG="$(git describe --tags --abbrev=0 "${GITHUB_REF_NAME}^" 2>/dev/null || true)"
+          if [ -n "$PREV_TAG" ]; then
+            {
+              echo
+              echo "**Full Changelog**: ${PREV_TAG}...${GITHUB_REF_NAME}"
+            } >> release-notes.md
+          fi
+
       - uses: softprops/action-gh-release@v3
         with:
-          generate_release_notes: true
+          body_path: release-notes.md
